@@ -6,10 +6,5 @@
       "use": "@vercel/next"
     }
   ],
-  "regions": ["iad1"],
-  "scripts": {
-  "dev": "node server.js",
-  "build": "next build",
-  "start": "next start"
-}
+  "regions": ["iad1"]
 }
