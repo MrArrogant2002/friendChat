@@ -1,0 +1,19 @@
+### Chat API smoke tests
+
+@baseUrl = http://localhost:3000/api
+@token = {{login.response.body.token}}
+
+### Send Chat Message
+POST {{baseUrl}}/chat/send
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "chatId": "demo-room",
+  "content": "Hello from VS Code REST client",
+  "attachments": []
+}
+
+### Get Chat Messages
+GET {{baseUrl}}/chat/messages/demo-room
+Authorization: Bearer {{token}}

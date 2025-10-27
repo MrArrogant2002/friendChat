@@ -1,0 +1,98 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+server/node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.keystore
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.log*
+
+# macOS
+.DS_Store
+*.pem
+
+# Windows
+Thumbs.db
+
+# local env files
+.env
+.env*.local
+.env.development
+.env.production
+server/.env
+server/.env.local
+server/.env.development
+server/.env.production
+
+# typescript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build outputs
+build/
+coverage/
+.next/
+server/.next/
+out/
+
+# Logs
+*.log
+logs/
+
+# Testing
+.nyc_output/
+junit.xml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+# Config files that may contain secrets
+google-services.json
+
+# Generated files
+metro.config.js
+nativewind-env.d.ts
+package-lock.json
+yarn.lock
+
+# Documentation builds
+docs/.vuepress/dist
+docs/.vitepress/dist

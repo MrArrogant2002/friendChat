@@ -1,0 +1,25 @@
+# Prettier ignore patterns
+node_modules/
+.expo/
+.next/
+dist/
+build/
+coverage/
+*.lock
+*.log
+.DS_Store
+
+# Generated files
+*.tsbuildinfo
+expo-env.d.ts
+nativewind-env.d.ts
+
+# Environment files
+.env
+.env.*
+
+# Build outputs
+android/
+ios/
+web-build/
+.expo-shared/

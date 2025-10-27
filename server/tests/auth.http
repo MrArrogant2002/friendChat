@@ -1,0 +1,28 @@
+### Auth API smoke tests
+
+@baseUrl = http://localhost:3000/api
+
+### Signup
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "testuser@example.com",
+  "password": "password123",
+  "avatarUrl": ""
+}
+
+### Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "password123"
+}
+
+### Profile
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{login.response.body.token}}
