@@ -204,16 +204,21 @@ npm start
 
 ### Deployment
 
-**Backend (Vercel):**
+**Backend API (Vercel):**
 ```bash
 cd server
-vercel
+vercel --prod
 ```
 
-**Environment Variables on Vercel:**
-- `MONGO_URI` - MongoDB connection string
-- `JWT_SECRET` - Secure random string
-- `CLOUDINARY_URL` - Cloudinary credentials
+**Socket.IO Server (Railway):**
+- Deploy from GitHub at https://railway.app
+- Root directory: `server`
+- Start command: `node socket-server.js`
+- See [docs/SOCKET_DEPLOYMENT.md](docs/SOCKET_DEPLOYMENT.md)
+
+**Environment Variables:**
+- Vercel: `MONGO_URI`, `JWT_SECRET`, `CLOUDINARY_URL`
+- Railway: `JWT_SECRET`, `ALLOWED_ORIGINS`, `PORT`
 
 **Mobile App (EAS Build):**
 ```bash
@@ -227,6 +232,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment guide.
 
 - [SETUP_COMPLETE.md](docs/SETUP_COMPLETE.md) - **START HERE** - Overview of completed setup
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Complete deployment guide for Vercel and mobile builds
+- [SOCKET_DEPLOYMENT.md](docs/SOCKET_DEPLOYMENT.md) - Socket.IO separate deployment guide
 - [NGROK_WORKFLOW.md](docs/NGROK_WORKFLOW.md) - Using ngrok for remote testing
 - [ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md) - Complete variable reference and troubleshooting
 - [TODO.md](docs/TODO.md) - Project roadmap and pending tasks
