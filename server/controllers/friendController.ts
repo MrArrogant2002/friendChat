@@ -100,20 +100,21 @@ export async function listFriends(currentUserId: string): Promise<FriendProfile[
     .map((friendship) => {
       const friend = friendship.friend as PopulatedFriend | Types.ObjectId | null | undefined;
 
-      if (!friend || typeof friend !== 'object' || !('_id' in friend)) {
+      if (!friend || typeof friend !== 'object' || !('_id' in friend) || friend instanceof Types.ObjectId) {
         return null;
       }
 
-      const email = typeof friend.email === 'string' ? friend.email : null;
+      const populatedFriend = friend as PopulatedFriend;
+      const email = typeof populatedFriend.email === 'string' ? populatedFriend.email : null;
       if (!email) {
         return null;
       }
 
       return {
-        id: friend._id.toString(),
-        name: typeof friend.name === 'string' ? friend.name : '',
+        id: populatedFriend._id.toString(),
+        name: typeof populatedFriend.name === 'string' ? populatedFriend.name : '',
         email,
-        avatarUrl: typeof friend.avatarUrl === 'string' ? friend.avatarUrl : '',
+        avatarUrl: typeof populatedFriend.avatarUrl === 'string' ? populatedFriend.avatarUrl : '',
       } satisfies FriendProfile;
     })
     .filter((profile): profile is FriendProfile => profile !== null);

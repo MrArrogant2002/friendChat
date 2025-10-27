@@ -92,7 +92,7 @@ function computeRoomTitle(
 }
 
 async function getParticipantSummaries(chatId: string): Promise<ChatParticipantSummary[]> {
-  const participantIds = await MessageModel.distinct<Types.ObjectId>('sender', { chatId });
+  const participantIds = await MessageModel.distinct('sender', { chatId });
 
   if (!participantIds.length) {
     return [];
@@ -120,14 +120,14 @@ export async function getChatRoomsForUser(userId: string): Promise<ChatRoomSumma
   } catch {
     throw new HttpError(400, 'Invalid user identifier');
   }
-  const chatIds = await MessageModel.distinct<string>('chatId', { sender: userObjectId });
+  const chatIds = await MessageModel.distinct('chatId', { sender: userObjectId }) as string[];
 
   if (!chatIds.length) {
     return [];
   }
 
   const rooms = await Promise.all(
-    chatIds.map(async (chatId) => {
+    chatIds.map(async (chatId: string) => {
       const [lastMessageDoc, messageCount, participants] = await Promise.all([
         MessageModel.findOne({ chatId })
           .sort({ createdAt: -1 })
