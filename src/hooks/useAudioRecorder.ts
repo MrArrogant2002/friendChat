@@ -1,21 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-import { Audio } from 'expo-av';
+import {
+  RecordingPresets,
+  useAudioRecorderState,
+  useAudioRecorder as useExpoAudioRecorder,
+} from 'expo-audio';
 
 import type { AudioRecordingAsset, MediaHookError } from '@/lib/media/types';
 
 export type AudioRecorderStatus = 'idle' | 'recording' | 'stopping' | 'error';
-
-async function ensureAudioPermission(): Promise<boolean> {
-  const permission = await Audio.getPermissionsAsync();
-
-  if (permission.status === 'granted') {
-    return true;
-  }
-
-  const requested = await Audio.requestPermissionsAsync();
-  return requested.status === 'granted';
-}
 
 function createMediaError(error: unknown, fallback: string): MediaHookError {
   if (error instanceof Error) {
@@ -34,66 +27,40 @@ export type UseAudioRecorderResult = {
 };
 
 export function useAudioRecorder(): UseAudioRecorderResult {
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recorder = useExpoAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder);
   const [status, setStatus] = useState<AudioRecorderStatus>('idle');
   const [error, setError] = useState<MediaHookError | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      const existing = await Audio.getPermissionsAsync();
-      setHasPermission(existing.status === 'granted');
-    })();
-  }, []);
 
   const startRecording = useCallback(async () => {
     setError(null);
 
     try {
-      const permissionGranted = await ensureAudioPermission();
-      setHasPermission(permissionGranted);
-
-      if (!permissionGranted) {
-        setError({ message: 'Microphone access is required to record audio.' });
-        return false;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
-
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await recording.startAsync();
-
-      recordingRef.current = recording;
+      // expo-audio handles permissions automatically when calling record()
+      await recorder.record();
+      setHasPermission(true);
       setStatus('recording');
       return true;
     } catch (caught) {
-      const mediaError = createMediaError(caught, 'Unable to start recording.');
+      const mediaError = createMediaError(caught, 'Unable to start recording. Please grant microphone permission.');
       setError(mediaError);
       setStatus('error');
+      setHasPermission(false);
       return false;
     }
-  }, []);
+  }, [recorder]);
 
   const stopRecording = useCallback(async () => {
-    const recording = recordingRef.current;
-
-    if (!recording) {
+    if (!recorder.isRecording) {
       return null;
     }
 
     setStatus('stopping');
 
     try {
-      await recording.stopAndUnloadAsync();
-      const recordingStatus = (await recording.getStatusAsync()) as Audio.RecordingStatus;
-      const uri = recording.getURI();
-
-      recordingRef.current = null;
+      await recorder.stop();
+      const uri = recorder.uri;
       setStatus('idle');
 
       if (!uri) {
@@ -102,7 +69,7 @@ export function useAudioRecorder(): UseAudioRecorderResult {
 
       return {
         uri,
-        durationMillis: recordingStatus.durationMillis ?? 0,
+        durationMillis: recorder.currentTime * 1000, // Convert to milliseconds
         mimeType: 'audio/m4a',
         fileSize: null,
       } satisfies AudioRecordingAsset;
@@ -112,19 +79,11 @@ export function useAudioRecorder(): UseAudioRecorderResult {
       setStatus('error');
       return null;
     }
-  }, []);
+  }, [recorder]);
 
   const reset = useCallback(() => {
     setError(null);
     setStatus('idle');
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => undefined);
-      }
-    };
   }, []);
 
   return {

@@ -59,9 +59,10 @@ io.use((socket, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    socket.userId = decoded.userId;
+    // JWT payload uses 'id' not 'userId'
+    socket.userId = decoded.id;
     socket.userEmail = decoded.email;
-    console.log(`Socket authenticated: ${socket.userId} (${socket.userEmail})`);
+    console.log(`Socket authenticated: ${socket.userId} (${socket.userEmail || 'email not in token'})`);
     next();
   } catch (err) {
     console.log(`Socket authentication failed: ${err.message}`);
