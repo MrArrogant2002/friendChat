@@ -16,7 +16,9 @@ export function useFriendSearch(query: string, options: ApiQueryOptions = {}) {
 }
 
 export function useAddFriendMutation() {
-  return useApiMutation<{ friendId: string }, FriendProfile>(async ({ friendId }) => addFriend(friendId));
+  return useApiMutation<{ friendId: string }, FriendProfile>(async ({ friendId }) =>
+    addFriend(friendId)
+  );
 }
 
 export function useFriendsList(options: ApiQueryOptions = {}) {

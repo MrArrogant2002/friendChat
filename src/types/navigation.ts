@@ -18,15 +18,11 @@ export type AppTabsParamList = {
   Profile: undefined;
 };
 
-export type AuthStackScreenProps<RouteName extends keyof RootStackParamList> = NativeStackScreenProps<
-  RootStackParamList,
-  RouteName
->;
+export type AuthStackScreenProps<RouteName extends keyof RootStackParamList> =
+  NativeStackScreenProps<RootStackParamList, RouteName>;
 
-export type RootStackScreenProps<RouteName extends keyof RootStackParamList> = NativeStackScreenProps<
-  RootStackParamList,
-  RouteName
->;
+export type RootStackScreenProps<RouteName extends keyof RootStackParamList> =
+  NativeStackScreenProps<RootStackParamList, RouteName>;
 
 export type AppTabsScreenProps<RouteName extends keyof AppTabsParamList> = BottomTabScreenProps<
   AppTabsParamList,

@@ -51,71 +51,65 @@ export function useImagePicker(): UseImagePickerResult {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<MediaHookError | null>(null);
 
-  const pickImage = useCallback<UseImagePickerResult['pickImage']>(
-    async (options) => {
-      setLoading(true);
-      setError(null);
+  const pickImage = useCallback<UseImagePickerResult['pickImage']>(async (options) => {
+    setLoading(true);
+    setError(null);
 
-      try {
-        const hasPermission = await ensureLibraryPermission();
-        if (!hasPermission) {
-          setError({ message: 'Photo library access is required to pick images.' });
-          return null;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-          ...defaultPickerOptions,
-          ...options,
-        });
-
-        if (result.canceled || !result.assets?.length) {
-          return null;
-        }
-
-        return mapAssetToImage(result.assets[0] as ImagePicker.ImagePickerAsset, false);
-      } catch (caught) {
-        const mediaError = createMediaError(caught, 'Unable to select image.');
-        setError(mediaError);
+    try {
+      const hasPermission = await ensureLibraryPermission();
+      if (!hasPermission) {
+        setError({ message: 'Photo library access is required to pick images.' });
         return null;
-      } finally {
-        setLoading(false);
       }
-    },
-    []
-  );
 
-  const captureImage = useCallback<UseImagePickerResult['captureImage']>(
-    async (options) => {
-      setLoading(true);
-      setError(null);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        ...defaultPickerOptions,
+        ...options,
+      });
 
-      try {
-        const hasCameraPermission = await ensureCameraPermission();
-        if (!hasCameraPermission) {
-          setError({ message: 'Camera access is required to capture images.' });
-          return null;
-        }
-
-        const result = await ImagePicker.launchCameraAsync({
-          ...defaultPickerOptions,
-          ...options,
-        });
-
-        if (result.canceled || !result.assets?.length) {
-          return null;
-        }
-
-        return mapAssetToImage(result.assets[0] as ImagePicker.ImagePickerAsset, true);
-      } catch (caught) {
-        const mediaError = createMediaError(caught, 'Unable to capture image.');
-        setError(mediaError);
+      if (result.canceled || !result.assets?.length) {
         return null;
-      } finally {
-        setLoading(false);
       }
-    },
-    []
-  );
+
+      return mapAssetToImage(result.assets[0] as ImagePicker.ImagePickerAsset, false);
+    } catch (caught) {
+      const mediaError = createMediaError(caught, 'Unable to select image.');
+      setError(mediaError);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const captureImage = useCallback<UseImagePickerResult['captureImage']>(async (options) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const hasCameraPermission = await ensureCameraPermission();
+      if (!hasCameraPermission) {
+        setError({ message: 'Camera access is required to capture images.' });
+        return null;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        ...defaultPickerOptions,
+        ...options,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return null;
+      }
+
+      return mapAssetToImage(result.assets[0] as ImagePicker.ImagePickerAsset, true);
+    } catch (caught) {
+      const mediaError = createMediaError(caught, 'Unable to capture image.');
+      setError(mediaError);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const reset = useCallback(() => {
     setError(null);

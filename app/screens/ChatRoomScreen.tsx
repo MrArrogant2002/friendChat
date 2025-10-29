@@ -1,22 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { MotiView } from 'moti';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import {
-    ActivityIndicator,
-    Button,
-    HelperText,
-    IconButton,
-    Surface,
-    Text,
-    TextInput,
-    useTheme,
+  ActivityIndicator,
+  Button,
+  HelperText,
+  IconButton,
+  Surface,
+  Text,
+  TextInput,
+  useTheme,
 } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useMessagesQuery, useSendMessageMutation } from '@/hooks/useChatApi';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useSession } from '@/hooks/useSession';
 import type { Message as ApiMessage, MessageAttachment } from '@/lib/api/types';
+import { borderRadius, shadows, spacing } from '@/theme';
 import type { RootStackScreenProps } from '@/types/navigation';
 
 function formatDuration(durationMillis: number | null | undefined): string {
@@ -45,6 +49,8 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
   const { token, user } = useSession();
   const [draft, setDraft] = useState('');
   const [conversation, setConversation] = useState<ApiMessage[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
   const {
     data: remoteMessages,
     loading: isLoadingMessages,
@@ -84,6 +90,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
         next[index] = incoming;
         return next;
       }
+      // New message added - return new array
       return [...prev, incoming];
     });
   }, []);
@@ -113,6 +120,17 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
       setConversation(remoteMessages);
     }
   }, [remoteMessages]);
+
+  // Auto-scroll to bottom when conversation updates with new messages
+  useEffect(() => {
+    if (conversation.length > 0) {
+      // Use a small delay to ensure FlatList has rendered the new content
+      const timer = setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [conversation.length]); // Only trigger when the number of messages changes
 
   const handleSelectImageFromLibrary = useCallback(async () => {
     if (!token) {
@@ -198,7 +216,15 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
     }
 
     await startRecording();
-  }, [addAttachment, audioRecorderError, isRecording, resetAudioError, startRecording, stopRecording, token]);
+  }, [
+    addAttachment,
+    audioRecorderError,
+    isRecording,
+    resetAudioError,
+    startRecording,
+    stopRecording,
+    token,
+  ]);
 
   const handleSend = async () => {
     const trimmed = draft.trim();
@@ -273,13 +299,21 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
         </Text>
       </Surface>
     );
-  }, [isLoadingMessages, messagesError, refetch, theme.colors.error, theme.colors.onSurfaceVariant, token]);
+  }, [
+    isLoadingMessages,
+    messagesError,
+    refetch,
+    theme.colors.error,
+    theme.colors.onSurfaceVariant,
+    token,
+  ]);
 
   const resolveSenderLabel = (message: ApiMessage) => {
-    const senderId = typeof message.sender === 'string' 
-      ? message.sender 
-      : (message.sender?.id || (message.sender as any)?._id?.toString());
-    
+    const senderId =
+      typeof message.sender === 'string'
+        ? message.sender
+        : message.sender?.id || (message.sender as any)?._id?.toString();
+
     if (senderId && senderId === user?.id) {
       return 'You';
     }
@@ -314,9 +348,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
   const renderPendingAttachment = useCallback(
     (attachment: MessageAttachment) => {
       if (attachment.kind === 'image') {
-        return (
-          <Image source={{ uri: attachment.url }} style={styles.pendingImageAttachment} />
-        );
+        return <Image source={{ uri: attachment.url }} style={styles.pendingImageAttachment} />;
       }
 
       if (attachment.kind === 'audio') {
@@ -361,9 +393,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
   const renderMessageAttachment = useCallback(
     (attachment: MessageAttachment) => {
       if (attachment.kind === 'image') {
-        return (
-          <Image source={{ uri: attachment.url }} style={styles.messageImageAttachment} />
-        );
+        return <Image source={{ uri: attachment.url }} style={styles.messageImageAttachment} />;
       }
 
       if (attachment.kind === 'audio') {
@@ -397,166 +427,240 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
         </Text>
       );
     },
-    [theme.colors.onSurfaceVariant, theme.colors.primary, theme.colors.surface, theme.colors.surfaceVariant]
+    [
+      theme.colors.onSurfaceVariant,
+      theme.colors.primary,
+      theme.colors.surface,
+      theme.colors.surfaceVariant,
+    ]
   );
 
+  const listFooterComponent = useMemo(() => {
+    return (
+      <View>
+        {/* Typing Indicator */}
+        {isTyping && <TypingIndicator />}
+
+        {/* Pending Attachments */}
+        {pendingAttachments.length > 0 && (
+          <View style={styles.pendingAttachmentsContainer}>
+            {pendingAttachments.map((attachment, index) => (
+              <Surface
+                key={`${attachment.kind}-${index}-${attachment.url}`}
+                elevation={2}
+                style={[
+                  styles.pendingAttachmentCard,
+                  {
+                    borderColor: theme.colors.outlineVariant,
+                    backgroundColor: theme.colors.surface,
+                  },
+                ]}
+              >
+                {renderPendingAttachment(attachment)}
+                <IconButton
+                  icon="close"
+                  size={16}
+                  onPress={() => removeAttachment(index)}
+                  style={styles.removeAttachmentButton}
+                  accessibilityLabel="Remove attachment"
+                />
+              </Surface>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  }, [isTyping, pendingAttachments, theme.colors, renderPendingAttachment, removeAttachment]);
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text variant="headlineSmall" style={{ color: theme.colors.onBackground, marginBottom: 16 }}>
-        {title}
-      </Text>
-      <FlatList
-        data={conversation}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={listEmptyComponent}
-        renderItem={({ item }) => {
-          const senderId = typeof item.sender === 'string' 
-            ? item.sender 
-            : (item.sender?.id || (item.sender as any)?._id?.toString());
-          
-          const isSentByMe = senderId === user?.id;
-          
-          return (
-            <Surface
-              elevation={1}
-              style={[
-                styles.messageBubble,
-                {
-                  backgroundColor: isSentByMe ? theme.colors.primaryContainer : theme.colors.surface,
-                  borderColor: isSentByMe ? theme.colors.primary : theme.colors.surfaceVariant,
-                  alignSelf: isSentByMe ? 'flex-end' : 'flex-start',
-                },
-              ]}
-            >
-              <Text
-                variant="labelLarge"
-                style={{ 
-                  color: isSentByMe ? theme.colors.onPrimaryContainer : theme.colors.primary, 
-                  textTransform: 'capitalize' 
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <Text
+          variant="headlineSmall"
+          style={{ color: theme.colors.onBackground, marginBottom: 16 }}
+        >
+          {title}
+        </Text>
+        <FlatList
+          ref={flatListRef}
+          data={conversation}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={listEmptyComponent}
+          ListFooterComponent={listFooterComponent}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          renderItem={({ item, index }) => {
+            const senderId =
+              typeof item.sender === 'string'
+                ? item.sender
+                : item.sender?.id || (item.sender as any)?._id?.toString();
+
+            const isSentByMe = senderId === user?.id;
+
+            return (
+              <MotiView
+                from={{ opacity: 0, translateY: 10 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{
+                  type: 'timing',
+                  duration: 200,
+                  delay: index < 5 ? index * 30 : 0,
                 }}
               >
-                {resolveSenderLabel(item)}
-              </Text>
-              {item.content ? (
-                <Text variant="bodyMedium" style={{ 
-                  color: isSentByMe ? theme.colors.onPrimaryContainer : theme.colors.onSurface 
-                }}>
-                  {item.content}
-                </Text>
-              ) : null}
-              {item.attachments?.length ? (
-                <View style={styles.messageAttachments}>
-                  {item.attachments.map((attachment, index) => (
-                    <View
-                      key={`${attachment.url}-${index}`}
-                      style={styles.messageAttachmentWrapper}
+                <Surface
+                  elevation={1}
+                  style={[
+                    styles.messageBubble,
+                    {
+                      backgroundColor: isSentByMe ? theme.colors.primaryContainer : '#93BFC7', // Soft blue for received messages
+                      borderColor: isSentByMe ? theme.colors.primaryContainer : '#93BFC7',
+                      alignSelf: isSentByMe ? 'flex-end' : 'flex-start',
+                    },
+                    shadows.sm,
+                  ]}
+                >
+                  {!isSentByMe && (
+                    <Text
+                      variant="labelMedium"
+                      style={{
+                        color: theme.dark ? '#1C1C1C' : '#333333',
+                        fontWeight: '600',
+                        marginBottom: spacing.xs,
+                      }}
                     >
-                      {renderMessageAttachment(attachment)}
+                      {resolveSenderLabel(item)}
+                    </Text>
+                  )}
+                  {item.content ? (
+                    <Text
+                      variant="bodyMedium"
+                      style={{
+                        color: theme.dark ? '#1C1C1C' : '#333333',
+                        lineHeight: 20,
+                      }}
+                    >
+                      {item.content}
+                    </Text>
+                  ) : null}
+                  {item.attachments?.length ? (
+                    <View style={styles.messageAttachments}>
+                      {item.attachments.map((attachment: any, index: number) => (
+                        <View
+                          key={`${attachment.url}-${index}`}
+                          style={styles.messageAttachmentWrapper}
+                        >
+                          {renderMessageAttachment(attachment)}
+                        </View>
+                      ))}
                     </View>
-                  ))}
-                </View>
-              ) : null}
-            </Surface>
-          );
-        }}
-      />
+                  ) : null}
+                  {item.createdAt && (
+                    <Text
+                      variant="labelSmall"
+                      style={{
+                        color: theme.dark ? 'rgba(28, 28, 28, 0.6)' : 'rgba(51, 51, 51, 0.6)',
+                        marginTop: spacing.xs,
+                        alignSelf: 'flex-end',
+                        fontSize: 11,
+                      }}
+                    >
+                      {new Date(item.createdAt).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
+                    </Text>
+                  )}
+                </Surface>
+              </MotiView>
+            );
+          }}
+        />
 
-      {pendingAttachments.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.pendingAttachmentsScroll}
-          contentContainerStyle={styles.pendingAttachmentsContent}
+        <Surface
+          style={[styles.composer, { borderColor: theme.colors.surfaceVariant }]}
+          elevation={1}
         >
-          {pendingAttachments.map((attachment, index) => (
-            <Surface
-              key={`${attachment.kind}-${index}-${attachment.url}`}
-              elevation={2}
-              style={[
-                styles.pendingAttachmentCard,
-                {
-                  borderColor: theme.colors.surfaceVariant,
-                  backgroundColor: theme.colors.surface,
-                },
-              ]}
-            >
-              {renderPendingAttachment(attachment)}
-              <IconButton
-                icon="close"
-                size={16}
-                onPress={() => removeAttachment(index)}
-                style={styles.removeAttachmentButton}
-                accessibilityLabel="Remove attachment"
-              />
-            </Surface>
-          ))}
-        </ScrollView>
-      )}
-
-      <Surface
-        style={[styles.composer, { borderColor: theme.colors.surfaceVariant }]}
-        elevation={1}
-      >
-        <View style={styles.mediaActions}>
-          <IconButton
-            icon="paperclip"
-            onPress={handleSelectImageFromLibrary}
-            accessibilityLabel="Attach image from library"
-            disabled={disableMediaActions}
-            loading={isPickingImage}
+          <View style={styles.mediaActions}>
+            <IconButton
+              icon="paperclip"
+              onPress={handleSelectImageFromLibrary}
+              accessibilityLabel="Attach image from library"
+              disabled={disableMediaActions}
+              loading={isPickingImage}
+            />
+            <IconButton
+              icon="camera"
+              onPress={handleCaptureImage}
+              accessibilityLabel="Capture image"
+              disabled={disableMediaActions}
+            />
+            <IconButton
+              icon={isRecording ? 'microphone-off' : 'microphone'}
+              onPress={handleToggleRecording}
+              accessibilityLabel={isRecording ? 'Stop recording audio' : 'Record audio message'}
+              disabled={disableMediaActions && !isRecording}
+              selected={isRecording}
+              loading={isStoppingRecording}
+            />
+          </View>
+          <TextInput
+            value={draft}
+            onChangeText={handleDraftChange}
+            placeholder="Message"
+            multiline
+            mode="flat"
+            style={styles.composerInput}
+            editable={!isComposerDisabled}
           />
           <IconButton
-            icon="camera"
-            onPress={handleCaptureImage}
-            accessibilityLabel="Capture image"
-            disabled={disableMediaActions}
+            icon="send"
+            onPress={handleSend}
+            accessibilityLabel="Send message"
+            disabled={(!hasDraftContent && !hasPendingAttachments) || isComposerDisabled}
+            loading={isSending}
           />
-          <IconButton
-            icon={isRecording ? 'microphone-off' : 'microphone'}
-            onPress={handleToggleRecording}
-            accessibilityLabel={isRecording ? 'Stop recording audio' : 'Record audio message'}
-            disabled={disableMediaActions && !isRecording}
-            selected={isRecording}
-            loading={isStoppingRecording}
-          />
-        </View>
-        <TextInput
-          value={draft}
-          onChangeText={handleDraftChange}
-          placeholder="Message"
-          multiline
-          mode="flat"
-          style={styles.composerInput}
-          editable={!isComposerDisabled}
-        />
-        <IconButton
-          icon="send"
-          onPress={handleSend}
-          accessibilityLabel="Send message"
-          disabled={(!hasDraftContent && !hasPendingAttachments) || isComposerDisabled}
-          loading={isSending}
-        />
-      </Surface>
-      <HelperText type="error" visible={Boolean(imagePickerError)}>
-        {imagePickerError?.message ?? ''}
-      </HelperText>
-      <HelperText type="error" visible={Boolean(audioRecorderError)}>
-        {audioRecorderError?.message ?? ''}
-      </HelperText>
-      <HelperText type="info" visible={isRecording}>
-        Recording… tap the microphone to stop.
-      </HelperText>
-      <HelperText type="error" visible={Boolean(sendError)}>
-        {sendError?.message ?? ''}
-      </HelperText>
-      <HelperText type="info" visible={Boolean(socketStatusMessage)}>
-        {socketStatusMessage ?? ''}
-      </HelperText>
-      <HelperText type="error" visible={Boolean(socketError)}>
-        {socketError?.message ?? ''}
-      </HelperText>
-    </View>
+        </Surface>
+        {imagePickerError && (
+          <HelperText type="error" visible={Boolean(imagePickerError)}>
+            {imagePickerError.message}
+          </HelperText>
+        )}
+        {audioRecorderError && (
+          <HelperText type="error" visible={Boolean(audioRecorderError)}>
+            {audioRecorderError.message}
+          </HelperText>
+        )}
+        {isRecording && (
+          <HelperText type="info" visible={isRecording}>
+            Recording… tap the microphone to stop.
+          </HelperText>
+        )}
+        {sendError && (
+          <HelperText type="error" visible={Boolean(sendError)}>
+            {sendError.message}
+          </HelperText>
+        )}
+        {socketStatusMessage && (
+          <HelperText type="info" visible={Boolean(socketStatusMessage)}>
+            {socketStatusMessage}
+          </HelperText>
+        )}
+        {socketError && (
+          <HelperText type="error" visible={Boolean(socketError)}>
+            {socketError.message}
+          </HelperText>
+        )}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -565,27 +669,29 @@ export default ChatRoomScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: 24,
   },
   listContent: {
     gap: 12,
-    paddingBottom: 120,
+    paddingBottom: 20,
   },
   messageBubble: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 4,
-    maxWidth: '85%',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 0,
+    marginVertical: spacing.xs,
+    maxWidth: '80%',
   },
   composer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 28,
-    paddingHorizontal: 4,
-    marginTop: 12,
-    gap: 4,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+    ...shadows.md,
   },
   mediaActions: {
     flexDirection: 'row',
@@ -597,33 +703,32 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   emptyStateSurface: {
-    paddingVertical: 24,
+    paddingVertical: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   retryButton: {
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
-  pendingAttachmentsScroll: {
-    marginTop: 12,
-    maxHeight: 140,
-  },
-  pendingAttachmentsContent: {
-    gap: 12,
-    paddingVertical: 4,
+  pendingAttachmentsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   pendingAttachmentCard: {
-    borderRadius: 16,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    padding: 12,
+    padding: spacing.md,
     position: 'relative',
     justifyContent: 'center',
   },
   pendingImageAttachment: {
     width: 120,
     height: 120,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
   },
   removeAttachmentButton: {
     position: 'absolute',
@@ -631,24 +736,24 @@ const styles = StyleSheet.create({
     right: -8,
   },
   messageAttachments: {
-    marginTop: 8,
-    gap: 8,
+    marginTop: spacing.sm,
+    gap: spacing.sm,
   },
   messageAttachmentWrapper: {
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
   },
   messageImageAttachment: {
     width: 180,
     height: 180,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
   },
   audioAttachment: {
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    gap: 2,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
     minWidth: 140,
     alignItems: 'flex-start',
   },

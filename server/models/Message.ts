@@ -1,12 +1,4 @@
-import {
-    HydratedDocument,
-    InferSchemaType,
-    Model,
-    Schema,
-    Types,
-    model,
-    models,
-} from 'mongoose';
+import { HydratedDocument, InferSchemaType, Model, Schema, Types, model, models } from 'mongoose';
 
 const attachmentSchema = new Schema(
   {

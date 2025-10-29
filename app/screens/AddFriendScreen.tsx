@@ -1,12 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { MotiView } from 'moti';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
-  Button,
-  Divider,
   HelperText,
+  IconButton,
   List,
   Searchbar,
   Snackbar,
@@ -14,11 +15,13 @@ import {
   Text,
   useTheme,
 } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useChatRoomsQuery } from '@/hooks/useChatApi';
 import { useAddFriendMutation, useFriendSearch } from '@/hooks/useFriends';
 import { useSession } from '@/hooks/useSession';
 import type { FriendProfile } from '@/lib/api/types';
+import { borderRadius, shadows, spacing } from '@/theme';
 import type { RootStackScreenProps } from '@/types/navigation';
 
 const DEBOUNCE_MS = 300;
@@ -31,13 +34,20 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const [addedFriendId, setAddedFriendId] = useState<string | null>(null);
   const [optimisticAdding, setOptimisticAdding] = useState<Set<string>>(new Set());
-  const { data: results, loading: isSearching, error: searchError, refetch: refetchSearch } = useFriendSearch(
-    debouncedQuery,
-    {
-      enabled: Boolean(token) && debouncedQuery.trim().length > 0,
-    }
-  );
-  const { mutate: addFriend, loading: isAdding, error: addError, reset: resetAddError } = useAddFriendMutation();
+  const {
+    data: results,
+    loading: isSearching,
+    error: searchError,
+    refetch: refetchSearch,
+  } = useFriendSearch(debouncedQuery, {
+    enabled: Boolean(token) && debouncedQuery.trim().length > 0,
+  });
+  const {
+    mutate: addFriend,
+    loading: isAdding,
+    error: addError,
+    reset: resetAddError,
+  } = useAddFriendMutation();
   const { refetch: refetchChatRooms } = useChatRoomsQuery({ enabled: false });
 
   useEffect(() => {
@@ -65,6 +75,8 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
         return;
       }
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
       // Optimistic update: immediately show as adding
       setOptimisticAdding((prev) => new Set(prev).add(profile.id));
 
@@ -74,6 +86,7 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
         await refetchChatRooms();
         setAddedFriendId(profile.id);
         setSnackbarMessage(`✓ Added ${profile.name || profile.email}`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (error) {
         // Rollback optimistic update on error
         setOptimisticAdding((prev) => {
@@ -82,6 +95,7 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
           return next;
         });
         setSnackbarMessage(`Failed to add ${profile.name || profile.email}`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     },
     [addFriend, refetchChatRooms, resetAddError, token]
@@ -92,10 +106,12 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
       if (!user) {
         return;
       }
-      
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
       // Create a deterministic chat ID by sorting user IDs
       const chatId = [user.id, friendId].sort().join('-');
-      
+
       // Navigate to chat room
       navigation.navigate('ChatRoom', {
         chatId,
@@ -106,61 +122,111 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: FriendProfile }) => {
+    ({ item, index }: { item: FriendProfile; index: number }) => {
       const isAdded = addedFriendId === item.id;
       const isOptimisticallyAdding = optimisticAdding.has(item.id);
-      
+
       return (
-        <List.Item
-          title={item.name || item.email}
-          description={item.email}
-          left={(props) => (
-            <Avatar.Text
-              {...props}
-              label={(item.name || item.email).slice(0, 2).toUpperCase()}
-              size={44}
-              style={{ backgroundColor: theme.colors.secondaryContainer }}
-              labelStyle={{ color: theme.colors.onSecondaryContainer }}
-            />
-          )}
-          right={() => (
-            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-              {isAdded ? (
-                <Button
-                  mode="contained"
-                  onPress={() => handleChatNow(item.id, item.name || item.email)}
-                  icon="chat"
-                >
-                  Chat Now
-                </Button>
-              ) : (
-                <Button
-                  mode="contained"
-                  onPress={() => handleAddFriend(item)}
-                  loading={isOptimisticallyAdding}
-                  disabled={isOptimisticallyAdding}
-                  icon={isOptimisticallyAdding ? undefined : "account-plus"}
-                >
-                  {isOptimisticallyAdding ? 'Adding...' : 'Add'}
-                </Button>
-              )}
-            </View>
-          )}
-          style={styles.listItem}
-          titleStyle={{ color: theme.colors.onSurface }}
-          descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-        />
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 300, delay: index * 50 }}
+        >
+          <List.Item
+            title={item.name || item.email}
+            description={item.email}
+            left={(props: any) => (
+              <Avatar.Text
+                {...props}
+                label={(item.name || item.email).slice(0, 2).toUpperCase()}
+                size={44}
+                style={{ backgroundColor: theme.colors.primaryContainer }}
+                labelStyle={{ color: theme.colors.onPrimaryContainer }}
+              />
+            )}
+            right={() => (
+              <View style={{ flexDirection: 'row', gap: spacing.xs, alignItems: 'center' }}>
+                {isAdded ? (
+                  <Pressable
+                    onPress={() => handleChatNow(item.id, item.name || item.email)}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      {
+                        backgroundColor: theme.colors.primary,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    <IconButton
+                      icon="chat"
+                      size={18}
+                      iconColor={theme.colors.surface}
+                      style={{ margin: 0 }}
+                    />
+                    <Text
+                      variant="labelMedium"
+                      style={{
+                        color: theme.colors.surface,
+                        fontWeight: '600',
+                      }}
+                    >
+                      Chat
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => handleAddFriend(item)}
+                    disabled={isOptimisticallyAdding}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      {
+                        backgroundColor: theme.colors.primaryContainer,
+                        opacity: pressed ? 0.8 : isOptimisticallyAdding ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    {isOptimisticallyAdding ? (
+                      <ActivityIndicator size="small" color={theme.colors.onPrimaryContainer} />
+                    ) : (
+                      <IconButton
+                        icon="account-plus"
+                        size={18}
+                        iconColor={theme.colors.onPrimaryContainer}
+                        style={{ margin: 0 }}
+                      />
+                    )}
+                    <Text
+                      variant="labelMedium"
+                      style={{
+                        color: theme.colors.onPrimaryContainer,
+                        fontWeight: '600',
+                      }}
+                    >
+                      {isOptimisticallyAdding ? 'Adding...' : 'Add'}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+            style={styles.listItem}
+            titleStyle={{ color: theme.colors.onSurface, fontWeight: '500' }}
+            descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
+          />
+        </MotiView>
       );
     },
-    [addedFriendId, optimisticAdding, handleAddFriend, handleChatNow, isAdding, theme.colors.onSecondaryContainer, theme.colors.onSurface, theme.colors.onSurfaceVariant, theme.colors.secondaryContainer]
+    [addedFriendId, optimisticAdding, handleAddFriend, handleChatNow, theme.colors]
   );
 
   const listEmptyComponent = useMemo(() => {
     if (!token) {
       return (
         <Surface elevation={0} style={styles.emptyState}>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-            Sign in to search for friends.
+          <Text
+            variant="bodyMedium"
+            style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}
+          >
+            Sign in to search for friends
           </Text>
         </Surface>
       );
@@ -169,8 +235,17 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
     if (trimmedQuery.length === 0) {
       return (
         <Surface elevation={0} style={styles.emptyState}>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-            Start typing to search for friends by name or email.
+          <IconButton
+            icon="account-search"
+            size={48}
+            iconColor={theme.colors.onSurfaceVariant}
+            style={{ opacity: 0.6 }}
+          />
+          <Text
+            variant="bodyMedium"
+            style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}
+          >
+            Start typing to search for friends
           </Text>
         </Surface>
       );
@@ -179,7 +254,13 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
     if (isSearching) {
       return (
         <Surface elevation={0} style={styles.emptyState}>
-          <ActivityIndicator animating size="small" />
+          <ActivityIndicator animating size="large" color={theme.colors.primary} />
+          <Text
+            variant="bodyMedium"
+            style={{ color: theme.colors.onSurfaceVariant, marginTop: spacing.md }}
+          >
+            Searching...
+          </Text>
         </Surface>
       );
     }
@@ -187,24 +268,65 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
     if (searchError) {
       return (
         <Surface elevation={0} style={styles.emptyState}>
+          <IconButton
+            icon="alert-circle"
+            size={48}
+            iconColor={theme.colors.error}
+            style={{ opacity: 0.6 }}
+          />
           <HelperText type="error" visible>
             {searchError.message}
           </HelperText>
-          <Button mode="text" onPress={refetchSearch}>
-            Retry
-          </Button>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              refetchSearch();
+            }}
+            style={({ pressed }) => [
+              styles.retryButton,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Text
+              variant="labelMedium"
+              style={{
+                color: theme.colors.onSurface,
+                fontWeight: '500',
+              }}
+            >
+              Retry
+            </Text>
+          </Pressable>
         </Surface>
       );
     }
 
     return (
       <Surface elevation={0} style={styles.emptyState}>
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-          No users found. Try a different search term.
+        <IconButton
+          icon="account-off"
+          size={48}
+          iconColor={theme.colors.onSurfaceVariant}
+          style={{ opacity: 0.6 }}
+        />
+        <Text
+          variant="bodyMedium"
+          style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}
+        >
+          No users found
+        </Text>
+        <Text
+          variant="bodySmall"
+          style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', opacity: 0.7 }}
+        >
+          Try a different search term
         </Text>
       </Surface>
     );
-  }, [isSearching, refetchSearch, searchError, theme.colors.onSurfaceVariant, token, trimmedQuery.length]);
+  }, [isSearching, refetchSearch, searchError, theme.colors, token, trimmedQuery.length]);
 
   useEffect(() => {
     if (addError) {
@@ -213,42 +335,95 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
   }, [addError]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
-      <View style={styles.headerRow}>
-        <Text variant="headlineSmall" style={{ color: theme.colors.onBackground }}>
-          Add Friend
-        </Text>
-        <Button onPress={() => navigation.goBack()} mode="text">
-          Close
-        </Button>
-      </View>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
+      <MotiView
+        from={{ opacity: 0, translateY: -20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: 'timing', duration: 400 }}
+      >
+        <View style={styles.headerRow}>
+          <View>
+            <Text
+              variant="headlineMedium"
+              style={{ color: theme.colors.onBackground, fontWeight: '700' }}
+            >
+              Add Friend
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{ color: theme.colors.onSurfaceVariant, marginTop: spacing.xs }}
+            >
+              Search by name or email
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.goBack();
+            }}
+            style={({ pressed }) => [
+              styles.closeButton,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <IconButton
+              icon="close"
+              size={20}
+              iconColor={theme.colors.onSurface}
+              style={{ margin: 0 }}
+            />
+          </Pressable>
+        </View>
+      </MotiView>
 
-      <Searchbar
-        placeholder="Search by name or email"
-        value={query}
-        onChangeText={setQuery}
-        style={styles.searchBar}
-        inputStyle={{ fontSize: 14 }}
-        autoFocus
-      />
+      <MotiView
+        from={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'timing', duration: 400, delay: 100 }}
+      >
+        <Searchbar
+          placeholder="Search users..."
+          value={query}
+          onChangeText={setQuery}
+          style={[
+            styles.searchBar,
+            {
+              backgroundColor: theme.colors.surfaceVariant,
+              borderRadius: borderRadius.lg,
+            },
+            shadows.sm,
+          ]}
+          inputStyle={{ fontSize: 15 }}
+          autoFocus
+          elevation={0}
+        />
+      </MotiView>
 
       <FlatList
         data={searchResults}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={renderItem}
-        ItemSeparatorComponent={Divider}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         ListEmptyComponent={listEmptyComponent}
+        showsVerticalScrollIndicator={false}
       />
 
       <Snackbar
         visible={Boolean(snackbarMessage)}
         onDismiss={() => setSnackbarMessage(null)}
         duration={3000}
+        style={{ backgroundColor: theme.colors.inverseSurface }}
       >
-        {snackbarMessage}
+        <Text style={{ color: theme.colors.inverseOnSurface }}>{snackbarMessage}</Text>
       </Snackbar>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -257,31 +432,49 @@ export default AddFriendScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    padding: spacing.lg,
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: spacing.lg,
+  },
+  closeButton: {
+    borderRadius: borderRadius.full,
+    padding: spacing.xs,
   },
   searchBar: {
-    marginBottom: 12,
+    marginBottom: spacing.lg,
   },
   listContent: {
-    paddingBottom: 32,
+    paddingBottom: spacing.xl,
   },
   listItem: {
-    borderRadius: 16,
-    paddingHorizontal: 8,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  retryButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.sm,
   },
   emptyState: {
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
     borderWidth: 1,
     borderColor: 'transparent',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 32,
+    gap: spacing.sm,
+    marginTop: spacing.xl,
   },
 });

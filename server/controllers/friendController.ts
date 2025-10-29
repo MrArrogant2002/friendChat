@@ -19,7 +19,10 @@ function normalizeObjectId(id: string, field: string): Types.ObjectId {
   }
 }
 
-export async function searchFriends(currentUserId: string, query: string): Promise<FriendProfile[]> {
+export async function searchFriends(
+  currentUserId: string,
+  query: string
+): Promise<FriendProfile[]> {
   const trimmed = query.trim();
   if (!trimmed) {
     return [];
@@ -100,7 +103,12 @@ export async function listFriends(currentUserId: string): Promise<FriendProfile[
     .map((friendship) => {
       const friend = friendship.friend as PopulatedFriend | Types.ObjectId | null | undefined;
 
-      if (!friend || typeof friend !== 'object' || !('_id' in friend) || friend instanceof Types.ObjectId) {
+      if (
+        !friend ||
+        typeof friend !== 'object' ||
+        !('_id' in friend) ||
+        friend instanceof Types.ObjectId
+      ) {
         return null;
       }
 

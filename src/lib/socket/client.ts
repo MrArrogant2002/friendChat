@@ -7,18 +7,26 @@ import type { ClientToServerEvents, ServerToClientEvents } from './types';
 let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 let activeToken: string | null = null;
 
-function createSocketInstance(token: string | null): Socket<ServerToClientEvents, ClientToServerEvents> {
+function createSocketInstance(
+  token: string | null
+): Socket<ServerToClientEvents, ClientToServerEvents> {
   const instance = io(SOCKET_URL, {
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     autoConnect: false,
     auth: token ? { token } : undefined,
+    timeout: 10000, // 10 second connection timeout
+    reconnectionDelay: 1000, // Start reconnection after 1 second
+    reconnectionDelayMax: 5000, // Max 5 seconds between reconnection attempts
+    reconnectionAttempts: 5, // Try 5 times before giving up
   }) as Socket<ServerToClientEvents, ClientToServerEvents>;
 
   activeToken = token;
   return instance;
 }
 
-export function ensureSocket(token?: string | null): Socket<ServerToClientEvents, ClientToServerEvents> {
+export function ensureSocket(
+  token?: string | null
+): Socket<ServerToClientEvents, ClientToServerEvents> {
   const normalizedToken = token ?? null;
 
   if (socket) {
@@ -35,7 +43,9 @@ export function ensureSocket(token?: string | null): Socket<ServerToClientEvents
   return socket;
 }
 
-export function connectSocket(token?: string | null): Socket<ServerToClientEvents, ClientToServerEvents> {
+export function connectSocket(
+  token?: string | null
+): Socket<ServerToClientEvents, ClientToServerEvents> {
   const instance = ensureSocket(token);
 
   if (!instance.connected) {

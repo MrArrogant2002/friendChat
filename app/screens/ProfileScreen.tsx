@@ -1,20 +1,23 @@
+import * as Haptics from 'expo-haptics';
+import { MotiView } from 'moti';
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
   Avatar,
-  Button,
   Divider,
   HelperText,
-  List,
+  IconButton,
   Surface,
   Switch,
   Text,
   useTheme,
 } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLogoutCallback, useProfileQuery } from '@/hooks/useAuthApi';
 import { useSession } from '@/hooks/useSession';
 import { useThemePreference } from '@/hooks/useThemePreference';
+import { borderRadius, shadows, spacing } from '@/theme';
 import type { AppTabsScreenProps } from '@/types/navigation';
 
 const ProfileScreen: React.FC<AppTabsScreenProps<'Profile'>> = ({ navigation }) => {
@@ -46,109 +49,376 @@ const ProfileScreen: React.FC<AppTabsScreenProps<'Profile'>> = ({ navigation }) 
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text variant="headlineSmall" style={{ color: theme.colors.onBackground }}>
-        Profile
-      </Text>
-      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 24 }}>
-        Personalize your account and manage preferences.
-      </Text>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <MotiView
+          from={{ opacity: 0, translateY: -20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 300 }}
+        >
+          <Surface elevation={1} style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+            <Text
+              variant="titleLarge"
+              style={{
+                color: theme.colors.onSurface,
+                fontWeight: '600',
+              }}
+            >
+              Profile
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{
+                color: theme.colors.onSurfaceVariant,
+                marginTop: spacing.xs,
+              }}
+            >
+              Personalize your account and manage preferences
+            </Text>
+          </Surface>
+        </MotiView>
 
-      <Surface
-        elevation={1}
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.surfaceVariant,
-          },
-        ]}
-      >
-        <View style={styles.identityRow}>
-          <Avatar.Text
-            label={initials}
-            size={56}
-            style={{ backgroundColor: theme.colors.secondaryContainer }}
-            labelStyle={{ color: theme.colors.onSecondaryContainer }}
-          />
-          <View style={{ flex: 1 }}>
-            <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-              {resolvedUser?.name ?? 'FriendChat User'}
+        {/* Profile Identity Card */}
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'timing', duration: 400, delay: 100 }}
+        >
+          <Surface
+            elevation={1}
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
+              shadows.md,
+            ]}
+          >
+            <View style={styles.identityRow}>
+              <Avatar.Text
+                label={initials}
+                size={64}
+                style={{ backgroundColor: theme.colors.primaryContainer }}
+                labelStyle={{
+                  color: theme.colors.onPrimaryContainer,
+                  fontWeight: '600',
+                  fontSize: 24,
+                }}
+              />
+              <View style={styles.userInfo}>
+                <Text
+                  variant="titleLarge"
+                  style={{
+                    color: theme.colors.onSurface,
+                    fontWeight: '600',
+                  }}
+                >
+                  {resolvedUser?.name ?? 'FriendChat User'}
+                </Text>
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    marginTop: spacing.xs,
+                  }}
+                >
+                  {resolvedUser?.email ?? 'Sign in to sync your profile'}
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={({ pressed }) => [
+                styles.editButton,
+                {
+                  backgroundColor: theme.colors.primaryContainer,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+              disabled={!token || profileLoading}
+            >
+              <IconButton icon="pencil" size={20} iconColor={theme.colors.onPrimaryContainer} />
+              <Text
+                variant="labelLarge"
+                style={{
+                  color: theme.colors.onPrimaryContainer,
+                  fontWeight: '600',
+                }}
+              >
+                Edit Profile
+              </Text>
+            </Pressable>
+          </Surface>
+        </MotiView>
+
+        {/* Settings Card */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 200 }}
+        >
+          <Surface
+            elevation={1}
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
+              shadows.md,
+            ]}
+          >
+            <Text
+              variant="titleMedium"
+              style={{
+                color: theme.colors.onSurface,
+                fontWeight: '600',
+                marginBottom: spacing.md,
+              }}
+            >
+              Settings
             </Text>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              {resolvedUser?.email ?? 'Sign in to sync your profile'}
-            </Text>
-          </View>
-          <Button mode="outlined" onPress={() => undefined} disabled={!token || profileLoading}>
-            Edit
-          </Button>
-        </View>
-        <Divider style={styles.divider} />
-        <List.Item
-          title="Notifications"
-          description="Receive chat mentions and chart updates"
-          right={() => (
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              disabled={!token}
-            />
-          )}
-        />
-        <List.Item
-          title="Theme"
-          description="Override system preference"
-          right={() => (
+
+            {/* Notifications Toggle */}
+            <View style={styles.settingItem}>
+              <View style={styles.settingInfo}>
+                <Text
+                  variant="bodyLarge"
+                  style={{
+                    color: theme.colors.onSurface,
+                    fontWeight: '500',
+                  }}
+                >
+                  Notifications
+                </Text>
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    marginTop: spacing.xs,
+                  }}
+                >
+                  Receive chat mentions and updates
+                </Text>
+              </View>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={(value) => {
+                  setNotificationsEnabled(value);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                disabled={!token}
+                color={theme.colors.primary}
+              />
+            </View>
+
+            <Divider style={styles.divider} />
+
+            {/* Theme Selection */}
+            <View style={styles.settingItem}>
+              <View style={styles.settingInfo}>
+                <Text
+                  variant="bodyLarge"
+                  style={{
+                    color: theme.colors.onSurface,
+                    fontWeight: '500',
+                  }}
+                >
+                  Theme
+                </Text>
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    marginTop: spacing.xs,
+                  }}
+                >
+                  Choose your preferred theme
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.themeOptions}>
               {(['system', 'light', 'dark'] as const).map((mode) => (
-                <Button
+                <Pressable
                   key={mode}
-                  mode={themeMode === mode ? 'contained' : 'text'}
-                  onPress={() => setThemeMode(mode)}
-                  compact
-                  style={styles.themeButton}
+                  onPress={() => {
+                    setThemeMode(mode);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
                   disabled={!token}
+                  style={({ pressed }) => [
+                    styles.themeButton,
+                    {
+                      backgroundColor:
+                        themeMode === mode ? theme.colors.primaryContainer : theme.colors.surface,
+                      borderColor:
+                        themeMode === mode ? theme.colors.primary : theme.colors.outlineVariant,
+                      opacity: pressed ? 0.7 : !token ? 0.5 : 1,
+                    },
+                  ]}
                 >
-                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                </Button>
+                  <IconButton
+                    icon={
+                      mode === 'system'
+                        ? 'brightness-auto'
+                        : mode === 'light'
+                          ? 'white-balance-sunny'
+                          : 'moon-waning-crescent'
+                    }
+                    size={20}
+                    iconColor={
+                      themeMode === mode ? theme.colors.onPrimaryContainer : theme.colors.onSurface
+                    }
+                  />
+                  <Text
+                    variant="labelMedium"
+                    style={{
+                      color:
+                        themeMode === mode
+                          ? theme.colors.onPrimaryContainer
+                          : theme.colors.onSurface,
+                      fontWeight: themeMode === mode ? '600' : '500',
+                    }}
+                  >
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </Text>
+                </Pressable>
               ))}
             </View>
-          )}
-        />
-        <HelperText type="error" visible={Boolean(profileError)}>
-          {profileError?.message ?? ''}
-        </HelperText>
-      </Surface>
 
-      <Surface
-        elevation={1}
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.surfaceVariant,
-          },
-        ]}
-      >
-        <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-          Account actions
-        </Text>
-        <Button mode="text" onPress={() => undefined} style={styles.accountButton}>
-          Manage connected providers
-        </Button>
-        <Button mode="text" onPress={() => undefined} style={styles.accountButton}>
-          Export data snapshot
-        </Button>
-        <Button
-          mode="contained-tonal"
-          onPress={handleSignOut}
-          style={styles.accountButton}
-          disabled={!token}
+            {profileError && (
+              <HelperText type="error" visible={Boolean(profileError)}>
+                {profileError.message}
+              </HelperText>
+            )}
+          </Surface>
+        </MotiView>
+
+        {/* Account Actions Card */}
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 400, delay: 300 }}
         >
-          Sign out
-        </Button>
-      </Surface>
-    </View>
+          <Surface
+            elevation={1}
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
+              shadows.md,
+            ]}
+          >
+            <Text
+              variant="titleMedium"
+              style={{
+                color: theme.colors.onSurface,
+                fontWeight: '600',
+                marginBottom: spacing.sm,
+              }}
+            >
+              Account Actions
+            </Text>
+
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={({ pressed }) => [
+                styles.actionButton,
+                {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <IconButton icon="link-variant" size={20} iconColor={theme.colors.primary} />
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: theme.colors.onSurface,
+                  flex: 1,
+                }}
+              >
+                Manage connected providers
+              </Text>
+              <IconButton
+                icon="chevron-right"
+                size={20}
+                iconColor={theme.colors.onSurfaceVariant}
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={({ pressed }) => [
+                styles.actionButton,
+                {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <IconButton icon="download" size={20} iconColor={theme.colors.primary} />
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: theme.colors.onSurface,
+                  flex: 1,
+                }}
+              >
+                Export data snapshot
+              </Text>
+              <IconButton
+                icon="chevron-right"
+                size={20}
+                iconColor={theme.colors.onSurfaceVariant}
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleSignOut();
+              }}
+              disabled={!token}
+              style={({ pressed }) => [
+                styles.signOutButton,
+                {
+                  backgroundColor: theme.colors.errorContainer,
+                  opacity: pressed ? 0.7 : !token ? 0.5 : 1,
+                },
+              ]}
+            >
+              <IconButton icon="logout" size={20} iconColor={theme.colors.error} />
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: theme.colors.error,
+                  fontWeight: '600',
+                  flex: 1,
+                }}
+              >
+                Sign Out
+              </Text>
+            </Pressable>
+          </Surface>
+        </MotiView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -157,32 +427,83 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+  },
+  scrollContent: {
+    padding: spacing.base,
+    paddingBottom: spacing.xxl,
+  },
+  header: {
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
   },
   card: {
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.base,
     borderWidth: 1,
-    gap: 8,
   },
   identityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.sm,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: spacing.md,
   },
   divider: {
-    marginVertical: 8,
+    marginVertical: spacing.md,
   },
   themeOptions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   themeButton: {
-    borderRadius: 999,
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 2,
   },
-  accountButton: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.xs,
   },
 });

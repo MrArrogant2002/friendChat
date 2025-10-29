@@ -1,8 +1,8 @@
 import axios, {
-    AxiosHeaders,
-    type AxiosInstance,
-    type AxiosRequestConfig,
-    type AxiosResponse,
+  AxiosHeaders,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
 } from 'axios';
 
 import { API_BASE_URL, API_TIMEOUT } from '@/config/env';
@@ -73,4 +73,3 @@ export async function apiRequest<TResponse>(config: RequestConfig): Promise<TRes
 
 export type { ApiClientError } from './errors';
 export { client as apiClient };
-

@@ -1,0 +1,18 @@
+services:
+  # Socket.IO Server for Real-time Chat
+  - type: web
+    name: friendchat-socket-server
+    runtime: node
+    buildCommand: npm install
+    startCommand: node socket-server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true

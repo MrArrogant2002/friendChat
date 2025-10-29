@@ -15,23 +15,27 @@ console.log('🧪 Testing Backend Integration...\n');
 function testVercelAPI() {
   return new Promise((resolve) => {
     console.log('1️⃣  Testing Vercel API...');
-    https.get(`${VERCEL_API}/auth/profile`, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode === 401) {
-          console.log('   ✅ Vercel API is responding (401 Unauthorized - expected without token)');
-          resolve(true);
-        } else {
-          console.log(`   ⚠️  Unexpected status code: ${res.statusCode}`);
-          console.log(`   Response: ${data}`);
-          resolve(false);
-        }
+    https
+      .get(`${VERCEL_API}/auth/profile`, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          if (res.statusCode === 401) {
+            console.log(
+              '   ✅ Vercel API is responding (401 Unauthorized - expected without token)'
+            );
+            resolve(true);
+          } else {
+            console.log(`   ⚠️  Unexpected status code: ${res.statusCode}`);
+            console.log(`   Response: ${data}`);
+            resolve(false);
+          }
+        });
+      })
+      .on('error', (err) => {
+        console.log('   ❌ Vercel API connection failed:', err.message);
+        resolve(false);
       });
-    }).on('error', (err) => {
-      console.log('   ❌ Vercel API connection failed:', err.message);
-      resolve(false);
-    });
   });
 }
 
@@ -39,25 +43,27 @@ function testVercelAPI() {
 function testRenderSocket() {
   return new Promise((resolve) => {
     console.log('\n2️⃣  Testing Render Socket.IO Server...');
-    https.get(`${RENDER_SOCKET}/health`, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          const health = JSON.parse(data);
-          console.log('   ✅ Socket.IO server is healthy');
-          console.log(`   Service: ${health.service}`);
-          console.log(`   Uptime: ${Math.floor(health.uptime)}s`);
-          resolve(true);
-        } else {
-          console.log(`   ❌ Unexpected status code: ${res.statusCode}`);
-          resolve(false);
-        }
+    https
+      .get(`${RENDER_SOCKET}/health`, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            const health = JSON.parse(data);
+            console.log('   ✅ Socket.IO server is healthy');
+            console.log(`   Service: ${health.service}`);
+            console.log(`   Uptime: ${Math.floor(health.uptime)}s`);
+            resolve(true);
+          } else {
+            console.log(`   ❌ Unexpected status code: ${res.statusCode}`);
+            resolve(false);
+          }
+        });
+      })
+      .on('error', (err) => {
+        console.log('   ❌ Socket.IO server connection failed:', err.message);
+        resolve(false);
       });
-    }).on('error', (err) => {
-      console.log('   ❌ Socket.IO server connection failed:', err.message);
-      resolve(false);
-    });
   });
 }
 
@@ -65,13 +71,13 @@ function testRenderSocket() {
 async function runTests() {
   const apiOk = await testVercelAPI();
   const socketOk = await testRenderSocket();
-  
+
   console.log('\n' + '='.repeat(50));
   console.log('📊 Test Summary:');
   console.log(`   Vercel API:        ${apiOk ? '✅ PASS' : '❌ FAIL'}`);
   console.log(`   Render Socket.IO:  ${socketOk ? '✅ PASS' : '❌ FAIL'}`);
   console.log('='.repeat(50));
-  
+
   if (apiOk && socketOk) {
     console.log('\n🎉 All backend services are operational!');
     console.log('\n📱 Your Expo app should connect successfully.');
@@ -86,7 +92,7 @@ async function runTests() {
     console.log('   Vercel:  https://vercel.com/dashboard');
     console.log('   Render:  https://dashboard.render.com\n');
   }
-  
+
   process.exit(apiOk && socketOk ? 0 : 1);
 }
 

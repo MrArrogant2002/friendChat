@@ -5,6 +5,7 @@
 All major features and integrations have been implemented! The FriendChat app is production-ready.
 
 ### Backend (Next.js API + MongoDB) ✅
+
 - [x] Restore Next.js tooling (package scripts, config files, `next-env.d.ts`)
 - [x] Implement Mongo connection helper with Next.js global caching
 - [x] Port auth/message/friend controllers to shared service layer
@@ -14,6 +15,7 @@ All major features and integrations have been implemented! The FriendChat app is
 - [x] Harden Socket.IO auth + room lifecycle handling
 
 ### Frontend (Expo + React Native) ✅
+
 - [x] Scaffold navigation (stack + bottom tabs) with React Navigation
 - [x] Integrate React Native Paper theme + layout primitives
 - [x] Implement screens: Login, Register, Chat List, Chat Room, Friends, Profile
@@ -25,6 +27,7 @@ All major features and integrations have been implemented! The FriendChat app is
 - [x] Add UI states for empty/new chat creation
 
 ### Environment & Deployment ✅
+
 - [x] Provide unified `.env.example` files for frontend and backend
 - [x] Add `vercel.json` backend deployment config
 - [x] Document ngrok workflow for local backend ➝ Expo client
@@ -35,12 +38,13 @@ All major features and integrations have been implemented! The FriendChat app is
 - [x] Add Socket.IO separate deployment guide (SOCKET_DEPLOYMENT.md)
 
 ### Documentation & Cleanup ✅
+
 - [x] Update root `README.md` with new architecture + setup steps
 - [x] Remove unused legacy files (Firebase, Express) and directories
 - [x] Run ESLint/Prettier + TypeScript checks in CI/local scripts
 - [x] Replace lingering "Friendly Chart" references with updated product naming
 - [x] Clean up redundant documentation files
-- [x] Organize Railway deployment configuration
+- [x] Organize deployment configuration (Vercel + Render)
 
 ---
 
@@ -49,11 +53,13 @@ All major features and integrations have been implemented! The FriendChat app is
 These are nice-to-have features that can be added in the future:
 
 ### Testing
+
 - [ ] Add integration tests for chat and friends flows (Jest + MongoDB Memory Server)
 - [ ] Add E2E tests for mobile app flows
 - [ ] Add unit tests for business logic
 
 ### Features
+
 - [ ] Push notifications for new messages
 - [ ] Message read receipts
 - [ ] Group chats
@@ -66,12 +72,14 @@ These are nice-to-have features that can be added in the future:
 - [ ] Message editing and deletion
 
 ### Performance
+
 - [ ] Implement message pagination/infinite scroll
 - [ ] Add Redis caching for frequently accessed data
 - [ ] Optimize image loading with lazy loading
 - [ ] Add service worker for web version
 
 ### Monitoring & Analytics
+
 - [ ] Add error tracking (Sentry)
 - [ ] Implement analytics (Mixpanel/Amplitude)
 - [ ] Set up performance monitoring

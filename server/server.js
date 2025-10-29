@@ -36,7 +36,7 @@ app.prepare().then(() => {
   // Socket.IO authentication middleware
   io.use((socket, next) => {
     const token = socket.handshake.auth.token || socket.handshake.query.token;
-    
+
     if (!token) {
       console.log('Socket connection rejected: No token provided');
       return next(new Error('Authentication token required'));
@@ -74,9 +74,9 @@ app.prepare().then(() => {
       const roomName = `chat:${chatId}`;
       socket.join(roomName);
       activeRooms.add(roomName);
-      
+
       console.log(`  → User ${socket.userId} joined chat ${chatId}`);
-      
+
       // Notify room members
       socket.to(roomName).emit('user-joined', {
         userId: socket.userId,
@@ -95,9 +95,9 @@ app.prepare().then(() => {
       const roomName = `chat:${chatId}`;
       socket.leave(roomName);
       activeRooms.delete(roomName);
-      
+
       console.log(`  ← User ${socket.userId} left chat ${chatId}`);
-      
+
       // Notify room members
       socket.to(roomName).emit('user-left', {
         userId: socket.userId,
@@ -131,7 +131,7 @@ app.prepare().then(() => {
     // Handle disconnect
     socket.on('disconnect', (reason) => {
       console.log(`✗ User disconnected: ${socket.userId} [${socket.id}] - Reason: ${reason}`);
-      
+
       // Clean up: notify all active rooms
       activeRooms.forEach((roomName) => {
         const chatId = roomName.replace('chat:', '');
@@ -141,7 +141,7 @@ app.prepare().then(() => {
           timestamp: new Date().toISOString(),
         });
       });
-      
+
       // Clear active rooms
       activeRooms.clear();
     });
@@ -194,7 +194,9 @@ app.prepare().then(() => {
     console.log(`✓ Next.js + Socket.IO Server Ready`);
     console.log(`================================================`);
     console.log(`  Local:            http://localhost:${port}`);
-    console.log(`  Network:          http://${hostname === '0.0.0.0' ? '0.0.0.0' : hostname}:${port}`);
+    console.log(
+      `  Network:          http://${hostname === '0.0.0.0' ? '0.0.0.0' : hostname}:${port}`
+    );
     console.log(`  Environment:      ${dev ? 'development' : 'production'}`);
     console.log(`  Socket.IO:        ✓ Active`);
     console.log(`  Transports:       websocket, polling`);

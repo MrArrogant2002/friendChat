@@ -32,7 +32,11 @@ async function bufferFromFile(file: File): Promise<Buffer> {
   return Buffer.from(arrayBuffer);
 }
 
-async function uploadToCloudinary(file: File, mediaType: MediaType, folder?: string): Promise<UploadApiResponse> {
+async function uploadToCloudinary(
+  file: File,
+  mediaType: MediaType,
+  folder?: string
+): Promise<UploadApiResponse> {
   const cloudinary = getCloudinary();
   const uploadOptions = getUploadOptions(mediaType, folder);
   const buffer = await bufferFromFile(file);

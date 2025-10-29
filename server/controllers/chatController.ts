@@ -50,7 +50,9 @@ export async function getMessages(chatId: string): Promise<MessageDocument[]> {
     throw new HttpError(400, 'chatId is required');
   }
 
-  return MessageModel.find({ chatId }).populate('sender', 'name email avatarUrl').sort({ createdAt: 1 });
+  return MessageModel.find({ chatId })
+    .populate('sender', 'name email avatarUrl')
+    .sort({ createdAt: 1 });
 }
 
 export type ChatParticipantSummary = {
@@ -120,7 +122,7 @@ export async function getChatRoomsForUser(userId: string): Promise<ChatRoomSumma
   } catch {
     throw new HttpError(400, 'Invalid user identifier');
   }
-  const chatIds = await MessageModel.distinct('chatId', { sender: userObjectId }) as string[];
+  const chatIds = (await MessageModel.distinct('chatId', { sender: userObjectId })) as string[];
 
   if (!chatIds.length) {
     return [];
@@ -129,10 +131,7 @@ export async function getChatRoomsForUser(userId: string): Promise<ChatRoomSumma
   const rooms = await Promise.all(
     chatIds.map(async (chatId: string) => {
       const [lastMessageDoc, messageCount, participants] = await Promise.all([
-        MessageModel.findOne({ chatId })
-          .sort({ createdAt: -1 })
-          .populate('sender', 'name')
-          .lean(),
+        MessageModel.findOne({ chatId }).sort({ createdAt: -1 }).populate('sender', 'name').lean(),
         MessageModel.countDocuments({ chatId }),
         getParticipantSummaries(chatId),
       ]);
@@ -150,7 +149,7 @@ export async function getChatRoomsForUser(userId: string): Promise<ChatRoomSumma
                 : String(lastMessageDoc.sender),
             senderName:
               typeof lastMessageDoc.sender === 'object' && lastMessageDoc.sender
-                ? (lastMessageDoc.sender as { name?: string }).name ?? null
+                ? ((lastMessageDoc.sender as { name?: string }).name ?? null)
                 : null,
           }
         : null;

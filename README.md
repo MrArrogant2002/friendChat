@@ -70,15 +70,15 @@ Below are the existing minimal templates in this repo. You can copy/replace them
 - `app/index.tsx` (home screen)
 
 ```tsx
-import { Text, View } from "react-native";
+import { Text, View } from 'react-native';
 
 export default function Index() {
   return (
     <View
       style={{
         flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
+        justifyContent: 'center',
+        alignItems: 'center',
       }}
     >
       <Text>Edit app/index.tsx to edit this screen.</Text>
@@ -90,8 +90,8 @@ export default function Index() {
 - `app/_layout.tsx` (expo-router root layout)
 
 ```tsx
-import { Stack } from "expo-router";
-import "./global.css";
+import { Stack } from 'expo-router';
+import './global.css';
 
 export default function RootLayout() {
   return <Stack />;
@@ -162,12 +162,14 @@ cd server && pnpm install
 2. Set up environment variables:
 
 **Frontend (`.env` in project root):**
+
 ```bash
 cp .env.example .env
 # Edit .env with your local IP or ngrok URL
 ```
 
 **Backend (`server/.env`):**
+
 ```bash
 cd server
 cp .env.example .env
@@ -192,11 +194,13 @@ npm start
 ### Testing on Physical Devices
 
 **Option 1: Same WiFi Network**
+
 - Update `.env` with your local IP address (e.g., `http://175.101.84.117:3000`)
 - Both devices must be on the same network
 - Ensure firewall allows ports 3000 (backend) and 8081 (Expo)
 
 **Option 2: ngrok (Remote Testing)**
+
 - Install ngrok: https://ngrok.com/download
 - Start ngrok: `ngrok http 3000`
 - Update `.env` with ngrok URL (e.g., `https://abc123.ngrok-free.app`)
@@ -205,22 +209,27 @@ npm start
 ### Deployment
 
 **Backend API (Vercel):**
+
 ```bash
 cd server
 vercel --prod
 ```
 
-**Socket.IO Server (Railway):**
-- Deploy from GitHub at https://railway.app
+**Socket.IO Server (Render):**
+
+- Deploy from GitHub at https://render.com
 - Root directory: `server`
 - Start command: `node socket-server.js`
+- Uses `render.yaml` for configuration
 - See [docs/SOCKET_DEPLOYMENT.md](docs/SOCKET_DEPLOYMENT.md)
 
 **Environment Variables:**
+
 - Vercel: `MONGO_URI`, `JWT_SECRET`, `CLOUDINARY_URL`
-- Railway: `JWT_SECRET`, `ALLOWED_ORIGINS`, `PORT`
+- Render: `JWT_SECRET`, `ALLOWED_ORIGINS`, `PORT`
 
 **Mobile App (EAS Build):**
+
 ```bash
 eas build --platform android --profile preview
 eas build --platform ios --profile preview
@@ -242,4 +251,3 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment guide.
 - Hook React Query or custom hooks to call the Next.js endpoints.
 - Add Socket.IO client bindings for live chat updates.
 - Replace placeholder data in the Paper-based screens with real API responses.
-

@@ -13,7 +13,13 @@ export class ApiClientError extends Error {
   public readonly details?: MaybeStringArray;
   public readonly body?: unknown;
 
-  constructor(message: string, status = 500, details?: MaybeStringArray, body?: unknown, cause?: unknown) {
+  constructor(
+    message: string,
+    status = 500,
+    details?: MaybeStringArray,
+    body?: unknown,
+    cause?: unknown
+  ) {
     super(message, cause ? { cause } : undefined);
     this.name = 'ApiClientError';
     this.status = status;
@@ -56,15 +62,22 @@ export function normalizeApiError(error: unknown): ApiClientError {
   if (isAxiosError(error)) {
     const status = error.response?.status ?? 500;
     const data = (error.response?.data ?? {}) as ErrorBody;
-    const baseMessage = typeof data.message === 'string' && data.message.length > 0
-      ? data.message
-      : error.message || 'Request failed';
+    const baseMessage =
+      typeof data.message === 'string' && data.message.length > 0
+        ? data.message
+        : error.message || 'Request failed';
 
     return new ApiClientError(baseMessage, status, coerceDetails(data), data, error);
   }
 
   if (error instanceof Error) {
-    return new ApiClientError(error.message || 'Unexpected error', 500, undefined, undefined, error);
+    return new ApiClientError(
+      error.message || 'Unexpected error',
+      500,
+      undefined,
+      undefined,
+      error
+    );
   }
 
   return new ApiClientError('Unexpected error', 500, undefined, undefined, error);

@@ -1,7 +1,7 @@
 /**
  * Standalone Socket.IO Server
  * This server handles real-time WebSocket connections separately from the Next.js API
- * Deploy this to Railway, Render, or any Node.js hosting platform
+ * Deploy this to Render, Railway, or any Node.js hosting platform
  */
 require('dotenv').config();
 const { createServer } = require('http');
@@ -10,9 +10,7 @@ const jwt = require('jsonwebtoken');
 
 const PORT = process.env.SOCKET_PORT || process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET;
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : '*';
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*';
 
 if (!JWT_SECRET) {
   console.error('❌ JWT_SECRET is required');
@@ -23,12 +21,14 @@ const httpServer = createServer((req, res) => {
   // Health check endpoint
   if (req.url === '/health' || req.url === '/') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'ok', 
-      service: 'FriendChat Socket.IO Server',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString()
-    }));
+    res.end(
+      JSON.stringify({
+        status: 'ok',
+        service: 'FriendChat Socket.IO Server',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+      })
+    );
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
@@ -43,15 +43,16 @@ const io = new Server(httpServer, {
     credentials: true,
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000,
+  pingTimeout: 10000, // Reduced from 60000ms to 10 seconds for faster timeout detection
+  pingInterval: 5000, // Reduced from 25000ms to 5 seconds for more frequent health checks
+  connectTimeout: 10000, // 10 seconds timeout for initial connection
   allowEIO3: true, // Allow Engine.IO v3 clients
 });
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
   const token = socket.handshake.auth.token || socket.handshake.query.token;
-  
+
   if (!token) {
     console.log('Socket connection rejected: No token provided');
     return next(new Error('Authentication token required'));
@@ -62,7 +63,9 @@ io.use((socket, next) => {
     // JWT payload uses 'id' not 'userId'
     socket.userId = decoded.id;
     socket.userEmail = decoded.email;
-    console.log(`Socket authenticated: ${socket.userId} (${socket.userEmail || 'email not in token'})`);
+    console.log(
+      `Socket authenticated: ${socket.userId} (${socket.userEmail || 'email not in token'})`
+    );
     next();
   } catch (err) {
     console.log(`Socket authentication failed: ${err.message}`);
@@ -76,7 +79,7 @@ const connectedUsers = new Map();
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log(`✓ User connected: ${socket.userId} [${socket.id}]`);
-  
+
   // Add to connected users
   connectedUsers.set(socket.userId, socket.id);
 
@@ -99,9 +102,9 @@ io.on('connection', (socket) => {
     const roomName = `chat:${chatId}`;
     socket.join(roomName);
     activeRooms.add(roomName);
-    
+
     console.log(`  → User ${socket.userId} joined chat ${chatId}`);
-    
+
     // Notify room members
     socket.to(roomName).emit('user-joined', {
       userId: socket.userId,
@@ -120,9 +123,9 @@ io.on('connection', (socket) => {
     const roomName = `chat:${chatId}`;
     socket.leave(roomName);
     activeRooms.delete(roomName);
-    
+
     console.log(`  ← User ${socket.userId} left chat ${chatId}`);
-    
+
     // Notify room members
     socket.to(roomName).emit('user-left', {
       userId: socket.userId,
@@ -156,13 +159,13 @@ io.on('connection', (socket) => {
   // Handle disconnect
   socket.on('disconnect', (reason) => {
     console.log(`✗ User disconnected: ${socket.userId} [${socket.id}] - Reason: ${reason}`);
-    
+
     // Remove from connected users
     connectedUsers.delete(socket.userId);
-    
+
     // Broadcast user offline status
     socket.broadcast.emit('user-offline', { userId: socket.userId });
-    
+
     // Clean up: notify all active rooms
     activeRooms.forEach((roomName) => {
       const chatId = roomName.replace('chat:', '');
@@ -172,7 +175,7 @@ io.on('connection', (socket) => {
         timestamp: new Date().toISOString(),
       });
     });
-    
+
     // Clear active rooms
     activeRooms.clear();
   });
@@ -222,7 +225,9 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log('================================================');
   console.log(`  Port:             ${PORT}`);
   console.log(`  Environment:      ${process.env.NODE_ENV || 'development'}`);
-  console.log(`  Allowed Origins:  ${Array.isArray(ALLOWED_ORIGINS) ? ALLOWED_ORIGINS.join(', ') : ALLOWED_ORIGINS}`);
+  console.log(
+    `  Allowed Origins:  ${Array.isArray(ALLOWED_ORIGINS) ? ALLOWED_ORIGINS.join(', ') : ALLOWED_ORIGINS}`
+  );
   console.log(`  Health Check:     http://localhost:${PORT}/health`);
   console.log(`  Transports:       websocket, polling`);
   console.log('================================================');

@@ -43,7 +43,10 @@ export function useAudioRecorder(): UseAudioRecorderResult {
       setStatus('recording');
       return true;
     } catch (caught) {
-      const mediaError = createMediaError(caught, 'Unable to start recording. Please grant microphone permission.');
+      const mediaError = createMediaError(
+        caught,
+        'Unable to start recording. Please grant microphone permission.'
+      );
       setError(mediaError);
       setStatus('error');
       setHasPermission(false);

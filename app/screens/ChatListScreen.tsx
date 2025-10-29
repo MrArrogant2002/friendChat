@@ -1,23 +1,25 @@
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MotiView } from 'moti';
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, Image as RNImage, StyleSheet, View } from 'react-native';
 import {
-    ActivityIndicator,
-    Avatar,
-    Button,
-    Divider,
-    List,
-    Searchbar,
-    Surface,
-    Text,
-    useTheme,
+  ActivityIndicator,
+  Avatar,
+  Button,
+  Searchbar,
+  Surface,
+  Text,
+  useTheme,
 } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useChatRoomsQuery } from '@/hooks/useChatApi';
 import { useFriendsList } from '@/hooks/useFriends';
 import { useSession } from '@/hooks/useSession';
-import type { AppTabsScreenProps, RootStackParamList } from '@/types/navigation';
+import { borderRadius, shadows, spacing } from '@/theme';
+import type { AppTabsParamList, AppTabsScreenProps, RootStackParamList } from '@/types/navigation';
 
 function getInitials(label: string): string {
   const trimmed = label.trim();
@@ -36,6 +38,7 @@ function getInitials(label: string): string {
 
 const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
   const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabsParamList>>();
   const theme = useTheme();
   const [query, setQuery] = useState('');
   const { token, user } = useSession();
@@ -47,6 +50,15 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
   } = useChatRoomsQuery({ enabled: Boolean(token) });
   const { data: friends } = useFriendsList({ enabled: Boolean(token) });
 
+  const userInitials = useMemo(() => {
+    if (!user?.name) return 'U';
+    const segments = user.name.trim().split(' ');
+    return segments
+      .slice(0, 2)
+      .map((s) => s.charAt(0).toUpperCase())
+      .join('');
+  }, [user?.name]);
+
   useFocusEffect(
     useCallback(() => {
       if (token) {
@@ -57,28 +69,31 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
     }, [refetchRooms, token])
   );
 
-  const getChatTitle = useCallback((chatTitle: string, chatId: string) => {
-    // If backend provided a proper title (not chatId), use it
-    if (chatTitle && chatTitle !== chatId) {
-      return chatTitle;
-    }
+  const getChatTitle = useCallback(
+    (chatTitle: string, chatId: string) => {
+      // If backend provided a proper title (not chatId), use it
+      if (chatTitle && chatTitle !== chatId) {
+        return chatTitle;
+      }
 
-    // Try to extract friend name from chatId
-    if (user && friends) {
-      const participantIds = chatId.split('-');
-      const friendId = participantIds.find(id => id !== user.id);
-      
-      if (friendId) {
-        const friend = friends.find(f => f.id === friendId);
-        if (friend) {
-          return friend.name || friend.email;
+      // Try to extract friend name from chatId
+      if (user && friends) {
+        const participantIds = chatId.split('-');
+        const friendId = participantIds.find((id) => id !== user.id);
+
+        if (friendId) {
+          const friend = friends.find((f) => f.id === friendId);
+          if (friend) {
+            return friend.name || friend.email;
+          }
         }
       }
-    }
 
-    // Fallback to chatId
-    return chatTitle || chatId;
-  }, [user, friends]);
+      // Fallback to chatId
+      return chatTitle || chatId;
+    },
+    [user, friends]
+  );
 
   const filteredChats = useMemo(() => {
     const rooms = chatRooms ?? [];
@@ -93,113 +108,230 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
   }, [chatRooms, query]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text variant="headlineSmall" style={{ color: theme.colors.onBackground }}>
-            Chats
-          </Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {filteredChats.length} conversation{filteredChats.length === 1 ? '' : 's'}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
+      {/* Modern header */}
+      <Surface elevation={1} style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+        <View style={styles.headerContent}>
+          <RNImage
+            source={require('../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text
+            variant="titleLarge"
+            style={{
+              color: theme.colors.onSurface,
+              fontWeight: '600',
+              marginLeft: spacing.sm,
+            }}
+          >
+            FriendlyChart
           </Text>
         </View>
-      </View>
-
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => tabNavigation.navigate('Profile')}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Avatar.Text
+              size={40}
+              label={userInitials}
+              style={{ backgroundColor: theme.colors.primaryContainer }}
+              labelStyle={{
+                color: theme.colors.onPrimaryContainer,
+                fontWeight: '600',
+              }}
+            />
+          </Pressable>
+        </View>
+      </Surface>
       <Searchbar
         placeholder="Search chats"
         value={query}
         onChangeText={setQuery}
-        style={styles.searchBar}
+        style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}
         inputStyle={{ fontSize: 14 }}
-      />
-
+        iconColor={theme.colors.primary}
+        elevation={0}
+      />{' '}
       <FlatList
         data={filteredChats}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={Divider}
-        renderItem={({ item }) => {
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+        renderItem={({ item, index }) => {
           const displayTitle = getChatTitle(item.title, item.id);
-          
+
           return (
-            <List.Item
-              title={displayTitle}
-              description={
-                item.lastMessage
-                  ? `${item.lastMessage.senderName ?? 'Participant'}: ${item.lastMessage.content || 'Attachment'}`
-                  : 'No messages yet'
-              }
-              onPress={() =>
-                rootNavigation.navigate('ChatRoom', {
-                  chatId: item.id,
-                  title: displayTitle,
-                })
-              }
-              left={(props) => (
-                <Avatar.Text
-                  {...props}
-                  label={getInitials(displayTitle)}
-                  size={44}
-                  style={{ backgroundColor: theme.colors.secondaryContainer }}
-                  labelStyle={{ color: theme.colors.onSecondaryContainer }}
-                />
-              )}
-              right={() =>
-                item.unreadCount > 0 ? (
-                  <Surface style={[styles.unreadPill, { backgroundColor: theme.colors.primary }]}>
-                    <Text variant="labelSmall" style={{ color: theme.colors.onPrimary }}>
-                      {item.unreadCount}
+            <MotiView
+              from={{ opacity: 0, translateY: 20 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{
+                type: 'timing',
+                duration: 300,
+                delay: index * 50,
+              }}
+            >
+              <Pressable
+                onPress={() =>
+                  rootNavigation.navigate('ChatRoom', {
+                    chatId: item.id,
+                    title: displayTitle,
+                  })
+                }
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Surface
+                  elevation={0}
+                  style={[
+                    styles.chatItem,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                  ]}
+                >
+                  <Avatar.Text
+                    label={getInitials(displayTitle)}
+                    size={48}
+                    style={{ backgroundColor: theme.colors.primaryContainer }}
+                    labelStyle={{
+                      color: theme.colors.onPrimaryContainer,
+                      fontWeight: '600',
+                    }}
+                  />
+                  <View style={styles.chatContent}>
+                    <View style={styles.chatHeader}>
+                      <Text
+                        variant="titleMedium"
+                        style={{
+                          color: theme.colors.onSurface,
+                          fontWeight: '600',
+                          flex: 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {displayTitle}
+                      </Text>
+                      {item.unreadCount > 0 && (
+                        <Surface
+                          style={[styles.unreadBadge, { backgroundColor: theme.colors.primary }]}
+                          elevation={1}
+                        >
+                          <Text
+                            variant="labelSmall"
+                            style={{
+                              color: theme.colors.surface,
+                              fontWeight: '600',
+                            }}
+                          >
+                            {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                          </Text>
+                        </Surface>
+                      )}
+                    </View>
+                    <Text
+                      variant="bodyMedium"
+                      style={{
+                        color: theme.colors.onSurfaceVariant,
+                        marginTop: spacing.xs,
+                      }}
+                      numberOfLines={2}
+                    >
+                      {item.lastMessage
+                        ? `${item.lastMessage.senderName ?? 'Participant'}: ${item.lastMessage.content || 'Attachment'}`
+                        : 'No messages yet'}
                     </Text>
-                  </Surface>
-                ) : null
-              }
-              style={styles.listItem}
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-            />
+                  </View>
+                </Surface>
+              </Pressable>
+            </MotiView>
           );
         }}
         ListEmptyComponent={
-          <Surface
-            style={[styles.emptyState, { borderColor: theme.colors.surfaceVariant }]}
-            elevation={0}
+          <MotiView
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'timing', duration: 400 }}
           >
-            {!token ? (
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-                Sign in to load your conversations.
-              </Text>
-            ) : isLoadingRooms ? (
-              <ActivityIndicator animating size="small" />
-            ) : roomsError ? (
-              <View style={styles.emptyStateContent}>
-                <Text variant="bodyMedium" style={{ color: theme.colors.error, textAlign: 'center' }}>
-                  {roomsError.message}
-                </Text>
-                <Button mode="text" onPress={refetchRooms}>
-                  Retry
-                </Button>
-              </View>
-            ) : (
-              <View style={styles.emptyStateContent}>
-                <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, textAlign: 'center', marginBottom: 8 }}>
-                  No conversations yet
-                </Text>
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginBottom: 16 }}>
-                  Start chatting with your friends to see conversations here
-                </Text>
-                <Button 
-                  mode="contained" 
-                  icon="account-plus"
-                  onPress={() => rootNavigation.navigate('AddFriend')}
+            <Surface
+              style={[
+                styles.emptyState,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outlineVariant,
+                },
+              ]}
+              elevation={0}
+            >
+              {!token ? (
+                <Text
+                  variant="bodyLarge"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    textAlign: 'center',
+                  }}
                 >
-                  Add Friends
-                </Button>
-              </View>
-            )}
-          </Surface>
+                  Sign in to load your conversations.
+                </Text>
+              ) : isLoadingRooms ? (
+                <ActivityIndicator animating size="large" color={theme.colors.primary} />
+              ) : roomsError ? (
+                <View style={styles.emptyStateContent}>
+                  <Text
+                    variant="bodyLarge"
+                    style={{
+                      color: theme.colors.error,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {roomsError.message}
+                  </Text>
+                  <Button mode="contained" onPress={refetchRooms} style={{ marginTop: spacing.md }}>
+                    Retry
+                  </Button>
+                </View>
+              ) : (
+                <View style={styles.emptyStateContent}>
+                  <Text
+                    variant="headlineSmall"
+                    style={{
+                      color: theme.colors.onSurface,
+                      textAlign: 'center',
+                      fontWeight: '600',
+                    }}
+                  >
+                    No conversations yet
+                  </Text>
+                  <Text
+                    variant="bodyMedium"
+                    style={{
+                      color: theme.colors.onSurfaceVariant,
+                      textAlign: 'center',
+                      marginTop: spacing.sm,
+                    }}
+                  >
+                    Start chatting with your friends
+                  </Text>
+                  <Button
+                    mode="contained"
+                    icon="account-plus"
+                    onPress={() => rootNavigation.navigate('AddFriend')}
+                    style={{ marginTop: spacing.lg }}
+                    contentStyle={{ paddingVertical: spacing.xs }}
+                  >
+                    Add Friends
+                  </Button>
+                </View>
+              )}
+            </Surface>
+          </MotiView>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -208,41 +340,70 @@ export default ChatListScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
   },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 36,
+    height: 36,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   searchBar: {
-    marginBottom: 12,
+    marginHorizontal: spacing.base,
+    marginVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
   },
   listContent: {
-    paddingBottom: 24,
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.xl,
   },
-  listItem: {
-    borderRadius: 16,
-    paddingHorizontal: 8,
-  },
-  unreadPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    minWidth: 28,
+  chatItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+  },
+  chatContent: {
+    flex: 1,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  unreadBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyState: {
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
     borderWidth: 1,
     alignItems: 'center',
-    gap: 8,
-    marginTop: 32,
+    marginTop: spacing.xxl,
   },
   emptyStateContent: {
     alignItems: 'center',
-    gap: 8,
   },
 });
