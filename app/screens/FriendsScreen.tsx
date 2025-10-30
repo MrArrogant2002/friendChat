@@ -2,27 +2,36 @@ import type { NavigationProp } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MotiView } from 'moti';
 import React, { useCallback, useMemo } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import {
-  ActivityIndicator,
-  Avatar,
-  Button,
-  HelperText,
-  IconButton,
-  Surface,
-  Text,
-  useTheme,
+    FlatList,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    useWindowDimensions,
+    View,
+} from 'react-native';
+import {
+    ActivityIndicator,
+    Avatar,
+    Button,
+    HelperText,
+    IconButton,
+    Surface,
+    Text,
+    useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useFriendsList } from '@/hooks/useFriends';
 import { useSession } from '@/hooks/useSession';
 import type { FriendProfile } from '@/lib/api/types';
-import { borderRadius, spacing } from '@/theme';
+import { borderRadius, chatColors, shadows, spacing } from '@/theme';
 import type { AppTabsScreenProps, RootStackParamList } from '@/types/navigation';
 
 const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) => {
   const theme = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const colors = theme.dark ? chatColors.dark : chatColors.light;
   const { token, user } = useSession();
   const { data: friends, loading, error, refetch } = useFriendsList({ enabled: Boolean(token) });
 
@@ -64,79 +73,80 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
   const renderItem = useCallback(
     ({ item, index }: { item: FriendProfile; index: number }) => (
       <MotiView
-        from={{ opacity: 0, translateX: -20 }}
-        animate={{ opacity: 1, translateX: 0 }}
+        from={{ opacity: 0, translateX: -20, scale: 0.95 }}
+        animate={{ opacity: 1, translateX: 0, scale: 1 }}
         transition={{
-          type: 'timing',
-          duration: 300,
+          type: 'spring',
+          damping: 15,
           delay: index * 50,
         }}
       >
-        <Surface
-          elevation={0}
-          style={[
-            styles.friendItem,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.outlineVariant,
-            },
-          ]}
+        <Pressable
+          onPress={() => handleChatNow(item.id, item.name || item.email)}
+          style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
         >
-          <Avatar.Text
-            label={(item.name || item.email).slice(0, 2).toUpperCase()}
-            size={52}
-            style={{ backgroundColor: theme.colors.primaryContainer }}
-            labelStyle={{
-              color: theme.colors.onPrimaryContainer,
-              fontWeight: '600',
-            }}
-          />
-          <View style={styles.friendInfo}>
-            <Text
-              variant="titleMedium"
-              style={{
-                color: theme.colors.onSurface,
-                fontWeight: '600',
-              }}
-              numberOfLines={1}
-            >
-              {item.name || item.email}
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{
-                color: theme.colors.onSurfaceVariant,
-                marginTop: spacing.xs,
-              }}
-              numberOfLines={1}
-            >
-              {item.email}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => handleChatNow(item.id, item.name || item.email)}
-            style={({ pressed }) => [
+          <Surface
+            elevation={1}
+            style={[
+              styles.friendItem,
               {
-                opacity: pressed ? 0.7 : 1,
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.borderColor,
               },
+              shadows.sm,
             ]}
           >
+            <Avatar.Text
+              label={(item.name || item.email).slice(0, 2).toUpperCase()}
+              size={56}
+              style={{ backgroundColor: theme.colors.primaryContainer }}
+              labelStyle={{
+                color: theme.colors.onPrimaryContainer,
+                fontWeight: '700',
+              }}
+            />
+            <View style={styles.friendInfo}>
+              <Text
+                variant="titleMedium"
+                style={{
+                  color: colors.textPrimary,
+                  fontWeight: '600',
+                }}
+                numberOfLines={1}
+              >
+                {item.name || item.email}
+              </Text>
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: colors.textSecondary,
+                  marginTop: spacing.xs,
+                }}
+                numberOfLines={1}
+              >
+                {item.email}
+              </Text>
+            </View>
             <Surface
-              elevation={1}
-              style={[styles.chatButton, { backgroundColor: theme.colors.primaryContainer }]}
+              elevation={2}
+              style={[
+                styles.chatButton,
+                { backgroundColor: theme.colors.primary },
+                shadows.md,
+              ]}
             >
               <IconButton
                 icon="chat"
-                size={20}
-                iconColor={theme.colors.onPrimaryContainer}
+                size={22}
+                iconColor={theme.colors.onPrimary}
                 style={{ margin: 0 }}
               />
             </Surface>
-          </Pressable>
-        </Surface>
+          </Surface>
+        </Pressable>
       </MotiView>
     ),
-    [handleChatNow, theme.colors]
+    [handleChatNow, theme.colors, colors]
   );
 
   const listEmptyComponent = useMemo(() => {

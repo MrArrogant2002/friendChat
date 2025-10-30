@@ -1,13 +1,22 @@
 import type { Theme as NavigationTheme } from '@react-navigation/native';
 import {
-  DarkTheme as NavigationDarkTheme,
-  DefaultTheme as NavigationLightTheme,
+    DarkTheme as NavigationDarkTheme,
+    DefaultTheme as NavigationLightTheme,
 } from '@react-navigation/native';
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 import type { MD3Theme } from 'react-native-paper';
 import { MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from 'react-native-paper';
 
-// Typography Scale - Modern Sans-Serif (Poppins/Inter style)
+// Get screen dimensions
+const { width: screenWidth } = Dimensions.get('window');
+
+// Calculate scaling factor
+const scale = screenWidth / 375; // 375 is base width (iPhone X/11/12 standard)
+const moderateScale = (size: number, factor: number = 0.5): number => {
+  return size + (scale * size - size) * factor;
+};
+
+// Typography Scale - Modern Sans-Serif (Poppins/Inter style) with responsive sizing
 export const typography = {
   fontFamily: Platform.select({
     ios: 'System',
@@ -21,23 +30,21 @@ export const typography = {
     bold: '700' as const,
   },
   sizes: {
-    xs: 11,
-    sm: 12,
-    base: 14,
-    md: 16,
-    lg: 18,
-    xl: 20,
-    xxl: 24,
-    xxxl: 28,
+    xs: moderateScale(11, 0.3),
+    sm: moderateScale(12, 0.3),
+    base: moderateScale(14, 0.3),
+    md: moderateScale(16, 0.3),
+    lg: moderateScale(18, 0.3),
+    xl: moderateScale(20, 0.3),
+    xxl: moderateScale(24, 0.3),
+    xxxl: moderateScale(28, 0.3),
   },
   lineHeights: {
     tight: 1.2,
     normal: 1.5,
     relaxed: 1.7,
   },
-};
-
-// Spacing Scale (8px rhythm)
+};// Spacing Scale (8px rhythm)
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -91,6 +98,34 @@ const { LightTheme: navigationLightBase, DarkTheme: navigationDarkBase } = adapt
   reactNavigationDark: NavigationDarkTheme,
 });
 
+// Chat-specific colors (used across the app)
+export const chatColors = {
+  light: {
+    background: '#ECF4E8', // Main background
+    messageSent: '#CBF3BB', // User's message bubble
+    messageReceived: '#93BFC7', // Other user's message bubble
+    accent: '#ABE7B2', // Secondary tint/highlights
+    inputBackground: '#FFFFFF',
+    borderColor: 'rgba(147, 191, 199, 0.2)', // Soft blue with opacity
+    textPrimary: '#1C1C1C',
+    textSecondary: '#4A5A4A',
+    textOnSent: '#1C1C1C', // Text on sent messages
+    textOnReceived: '#FFFFFF', // Text on received messages
+  },
+  dark: {
+    background: '#0F1410',
+    messageSent: '#9DD3A7', // Softer green for dark mode
+    messageReceived: '#7BA8B0', // Muted blue for dark mode
+    accent: '#7BA8B0',
+    inputBackground: '#1E2622',
+    borderColor: 'rgba(123, 168, 176, 0.2)',
+    textPrimary: '#E5E9E6',
+    textSecondary: '#B8C2BD',
+    textOnSent: '#1A2420',
+    textOnReceived: '#E5E9E6',
+  },
+};
+
 // Light Theme - Soft green and blue palette
 export const lightTheme: MD3Theme = {
   ...baseLight,
@@ -98,24 +133,24 @@ export const lightTheme: MD3Theme = {
     ...baseLight.colors,
     // Main colors
     primary: '#93BFC7', // Soft blue for icons and accents
-    primaryContainer: '#ABE7B2', // Light green for sent message bubbles
-    onPrimaryContainer: '#333333',
-    secondary: '#93BFC7', // Soft blue for highlights
-    onSecondary: '#FFFFFF',
+    primaryContainer: '#CBF3BB', // User's sent message bubbles
+    onPrimaryContainer: '#1C1C1C',
+    secondary: '#ABE7B2', // Secondary tint/accents
+    onSecondary: '#1C1C1C',
 
     // Background colors
-    background: '#ECF4E8', // Soft greenish background
-    onBackground: '#333333', // Dark text
+    background: '#ECF4E8', // Soft greenish background (main app background)
+    onBackground: '#1C1C1C', // Dark text
     surface: '#FFFFFF',
-    onSurface: '#333333',
+    onSurface: '#1C1C1C',
     surfaceVariant: '#E5F0E1',
     onSurfaceVariant: '#4A5A4A',
 
     // Utility colors
     outline: '#93BFC7',
-    outlineVariant: '#C8E6CA',
+    outlineVariant: 'rgba(147, 191, 199, 0.2)',
     tertiary: '#ABE7B2',
-    onTertiary: '#333333',
+    onTertiary: '#1C1C1C',
 
     // Semantic colors
     error: '#D32F2F',

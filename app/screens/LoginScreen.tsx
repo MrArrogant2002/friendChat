@@ -135,15 +135,14 @@ const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) =>
                 Welcome back
               </Text>
               <Text
-                variant="bodyMedium"
+                variant="bodySmall"
                 style={{
                   color: theme.colors.onSurfaceVariant,
                   marginTop: spacing.xs,
-                  marginBottom: spacing.md,
-                  lineHeight: 22,
+                  marginBottom: spacing.sm,
                 }}
               >
-                Sign in with your credentials to continue
+                Sign in to continue
               </Text>
 
               <View style={styles.fieldGroup}>
@@ -189,6 +188,8 @@ const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) =>
                   style={{ backgroundColor: theme.colors.surface }}
                   outlineColor={theme.colors.outlineVariant}
                   activeOutlineColor={theme.colors.primary}
+                  onSubmitEditing={handleLogin}
+                  returnKeyType="go"
                 />
                 {errors.password && (
                   <HelperText type="error" visible={errors.password}>
@@ -197,39 +198,28 @@ const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) =>
                 )}
               </View>
 
-              <View style={{ marginTop: spacing.lg, width: '100%', alignItems: 'center' }}>
-                <Pressable
-                  onPress={handleLogin}
-                  disabled={loading}
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    {
-                      backgroundColor: loading ? '#A5D6A7' : '#2E7D32',
-                      opacity: pressed ? 0.9 : 1,
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 4.65,
-                      elevation: 8,
-                      width: '100%',
-                      borderWidth: 1,
-                      borderColor: '#1B5E20',
-                    },
-                  ]}
+              {/* Sign In Button - Always visible */}
+              <Pressable
+                onPress={handleLogin}
+                disabled={loading}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  {
+                    backgroundColor: loading ? '#66BB6A' : '#4CAF50',
+                    opacity: pressed ? 0.85 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  },
+                ]}
+                accessible={true}
+                accessibilityLabel="Sign in button"
+                accessibilityRole="button"
+              >
+                <Text
+                  style={styles.primaryButtonText}
                 >
-                  <Text
-                    style={{
-                      color: '#FFFFFF',
-                      fontWeight: '700',
-                      fontSize: 18,
-                      letterSpacing: 0.5,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {loading ? 'Signing in...' : 'Sign In'}
-                  </Text>
-                </Pressable>
-              </View>
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </Text>
+              </Pressable>
 
               {error && (
                 <MotiView
@@ -280,62 +270,36 @@ const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) =>
                 />
               </View>
 
-              <View style={{ marginTop: spacing.sm, width: '100%', alignItems: 'center' }}>
-                <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    navigation.navigate('Register');
-                  }}
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    {
-                      backgroundColor: '#FFFFFF',
-                      borderWidth: 2,
-                      borderColor: '#4CAF50',
-                      opacity: pressed ? 0.7 : 1,
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 2,
-                      elevation: 2,
-                      width: '100%',
-                    },
+              {/* Secondary Button - Create Account */}
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate('Register');
+                }}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderWidth: 2,
+                    borderColor: '#4CAF50',
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+                accessible={true}
+                accessibilityLabel="Create account button"
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.secondaryButtonText,
+                    { color: theme.dark ? '#66BB6A' : '#2E7D32' },
                   ]}
                 >
-                  <Text
-                    variant="labelLarge"
-                    style={{
-                      color: '#4CAF50',
-                      fontWeight: '600',
-                      fontSize: 17,
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    New here? Create an account
-                  </Text>
-                </Pressable>
-              </View>
+                  New here? Create an account
+                </Text>
+              </Pressable>
             </Surface>
           </MotiView>
-
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.replace('AppTabs');
-            }}
-            style={({ pressed }) => [styles.skipButton, { opacity: pressed ? 0.6 : 1 }]}
-          >
-            <IconButton icon="arrow-right-circle" size={24} iconColor={theme.colors.primary} />
-            <Text
-              variant="bodyMedium"
-              style={{
-                color: theme.colors.onSurfaceVariant,
-                fontWeight: '500',
-              }}
-            >
-              Skip to demo
-            </Text>
-          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -351,34 +315,51 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: spacing.lg,
-    justifyContent: 'center',
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: spacing.md,
+    width: 80,
+    height: 80,
+    marginBottom: spacing.sm,
   },
   card: {
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
+    paddingBottom: spacing.xl,
     borderWidth: 1,
-    marginBottom: spacing.lg,
   },
   fieldGroup: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   primaryButton: {
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
-    marginTop: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
+    width: '100%',
+    marginTop: spacing.sm,
+    // Shadows for elevation
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: '#388E3C',
+  },
+  primaryButtonText: {
+    color: '#000000ff',
+    fontWeight: '700',
+    fontSize: 18,
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -391,7 +372,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    marginVertical: spacing.md,
   },
   dividerLine: {
     flex: 1,
@@ -404,11 +385,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
+    width: '100%',
+    marginTop: spacing.sm,
+    // Subtle shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  skipButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: spacing.xs,
+  secondaryButtonText: {
+    fontWeight: '600',
+    fontSize: 16,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
 });

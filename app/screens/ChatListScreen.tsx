@@ -3,22 +3,29 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MotiView } from 'moti';
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, Image as RNImage, StyleSheet, View } from 'react-native';
 import {
-  ActivityIndicator,
-  Avatar,
-  Button,
-  Searchbar,
-  Surface,
-  Text,
-  useTheme,
+    FlatList,
+    Pressable,
+    Image as RNImage,
+    StyleSheet,
+    useWindowDimensions,
+    View,
+} from 'react-native';
+import {
+    ActivityIndicator,
+    Avatar,
+    Button,
+    Searchbar,
+    Surface,
+    Text,
+    useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useChatRoomsQuery } from '@/hooks/useChatApi';
 import { useFriendsList } from '@/hooks/useFriends';
 import { useSession } from '@/hooks/useSession';
-import { borderRadius, shadows, spacing } from '@/theme';
+import { borderRadius, chatColors, shadows, spacing } from '@/theme';
 import type { AppTabsParamList, AppTabsScreenProps, RootStackParamList } from '@/types/navigation';
 
 function getInitials(label: string): string {
@@ -40,6 +47,8 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
   const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabsParamList>>();
   const theme = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const colors = theme.dark ? chatColors.dark : chatColors.light;
   const [query, setQuery] = useState('');
   const { token, user } = useSession();
   const {

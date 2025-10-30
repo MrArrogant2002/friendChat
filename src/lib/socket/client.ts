@@ -14,10 +14,12 @@ function createSocketInstance(
     transports: ['websocket', 'polling'],
     autoConnect: false,
     auth: token ? { token } : undefined,
-    timeout: 10000, // 10 second connection timeout
-    reconnectionDelay: 1000, // Start reconnection after 1 second
-    reconnectionDelayMax: 5000, // Max 5 seconds between reconnection attempts
-    reconnectionAttempts: 5, // Try 5 times before giving up
+    // Reconnection strategy - keep trying indefinitely
+    reconnection: true, // Enable automatic reconnection
+    reconnectionAttempts: Infinity, // Never give up trying to reconnect
+    reconnectionDelay: 1000, // Start with 1 second delay
+    reconnectionDelayMax: 10000, // Max 10 seconds between attempts (exponential backoff)
+    timeout: 10000, // 10 second connection timeout for each attempt
   }) as Socket<ServerToClientEvents, ClientToServerEvents>;
 
   activeToken = token;

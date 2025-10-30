@@ -38,7 +38,8 @@
             "backgroundColor": "#1C1C1C"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "reactCompiler": true

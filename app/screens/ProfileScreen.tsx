@@ -1,27 +1,29 @@
 import * as Haptics from 'expo-haptics';
 import { MotiView } from 'moti';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import {
-  Avatar,
-  Divider,
-  HelperText,
-  IconButton,
-  Surface,
-  Switch,
-  Text,
-  useTheme,
+    Avatar,
+    Divider,
+    HelperText,
+    IconButton,
+    Surface,
+    Switch,
+    Text,
+    useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLogoutCallback, useProfileQuery } from '@/hooks/useAuthApi';
 import { useSession } from '@/hooks/useSession';
 import { useThemePreference } from '@/hooks/useThemePreference';
-import { borderRadius, shadows, spacing } from '@/theme';
+import { borderRadius, chatColors, shadows, spacing } from '@/theme';
 import type { AppTabsScreenProps } from '@/types/navigation';
 
 const ProfileScreen: React.FC<AppTabsScreenProps<'Profile'>> = ({ navigation }) => {
   const theme = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const colors = theme.dark ? chatColors.dark : chatColors.light;
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { themeMode, setThemeMode } = useThemePreference();
   const { user: sessionUser, token } = useSession();
