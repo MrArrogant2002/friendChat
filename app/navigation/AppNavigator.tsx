@@ -6,9 +6,10 @@ import {
   useNavigationContainerRef,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { PaperProvider, useTheme } from 'react-native-paper';
 
 import { useThemePreference } from '@/hooks/useThemePreference';
@@ -17,8 +18,7 @@ import { clearSession } from '@/lib/api/session';
 import { darkTheme, lightTheme, navigationDarkTheme, navigationLightTheme, spacing } from '@/theme';
 import type {
   AppTabsParamList,
-  RootStackParamList,
-  RootStackScreenProps,
+  RootStackParamList
 } from '@/types/navigation';
 import AddFriendScreen from '../screens/AddFriendScreen';
 import ChatListScreen from '../screens/ChatListScreen';
@@ -39,18 +39,39 @@ function AppTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.outlineVariant,
+          position: 'absolute',
+          bottom: 20,
+          marginHorizontal: 60,
+          backgroundColor: theme.dark ? 'rgba(18, 18, 18, 0.8)' : 'rgba(255, 255, 255, 0.6)',
+          borderTopColor: 'transparent',
           borderTopWidth: 0,
-          elevation: 12,
+          elevation: 8,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          height: 64,
-          paddingBottom: spacing.sm,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: theme.dark ? 0.4 : 0.2,
+          shadowRadius: 16,
+          height: 68,
+          paddingBottom: spacing.md,
           paddingTop: spacing.sm,
+          borderRadius: 30,
+          borderWidth: 1,
+          borderColor: theme.dark ? 'rgba(255, 255, 255, 0.15)' : theme.colors.outlineVariant,
+          overflow: 'hidden',
         },
+        tabBarBackground: () => (
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 100 : 120}
+            tint={theme.dark ? 'dark' : 'light'}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 30,
+            }}
+          />
+        ),
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.outline,
         tabBarLabelStyle: {
@@ -144,10 +165,10 @@ const AppNavigator: React.FC = () => {
             <Stack.Screen
               name="ChatRoom"
               component={ChatRoomScreen}
-              options={({ route }: RootStackScreenProps<'ChatRoom'>) => ({
-                title: route.params.title,
+              options={{
+                headerShown: false,
                 animation: 'slide_from_right',
-              })}
+              }}
             />
             <Stack.Screen
               name="AddFriend"

@@ -1,14 +1,14 @@
 import React from 'react';
 import {
-    Pressable,
-    StyleSheet,
-    useWindowDimensions,
-    View
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { ActivityIndicator, IconButton, Surface, Text, TextInput, useTheme } from 'react-native-paper';
 
 import type { MessageAttachment } from '@/lib/api/types';
-import { borderRadius, chatColors, shadows, spacing } from '@/theme';
+import { borderRadius, spacing } from '@/theme';
 
 interface InputToolbarProps {
   draft: string;
@@ -39,7 +39,6 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
 }) => {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
-  const colors = theme.dark ? chatColors.dark : chatColors.light;
 
   const canSend = draft.trim().length > 0 || pendingAttachments.length > 0;
   const isSmallScreen = screenWidth < 375;
@@ -52,22 +51,22 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
           {pendingAttachments.map((attachment, index) => (
             <Surface
               key={`pending-${index}`}
-              elevation={1}
+              elevation={0}
               style={[
                 styles.attachmentCard,
                 {
-                  backgroundColor: colors.inputBackground,
-                  borderColor: colors.borderColor,
+                  backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                  borderColor: theme.dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
                 },
               ]}
             >
               {attachment.kind === 'image' && (
-                <Text variant="labelSmall" style={{ color: colors.textSecondary }}>
+                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
                   📷 Image
                 </Text>
               )}
               {attachment.kind === 'audio' && (
-                <Text variant="labelSmall" style={{ color: colors.textSecondary }}>
+                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
                   🎵 Audio
                 </Text>
               )}
@@ -77,7 +76,7 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
                   style={styles.removeButton}
                   hitSlop={8}
                 >
-                  <Text style={{ color: theme.colors.error, fontSize: 16 }}>×</Text>
+                  <Text style={{ color: theme.dark ? '#EF5350' : theme.colors.error, fontSize: 16 }}>×</Text>
                 </Pressable>
               )}
             </Surface>
@@ -87,14 +86,13 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
 
       {/* Input area */}
       <Surface
-        elevation={3}
+        elevation={0}
         style={[
           styles.inputContainer,
           {
-            backgroundColor: colors.inputBackground,
-            borderColor: colors.borderColor,
+            backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+            borderColor: theme.dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
           },
-          shadows.lg,
         ]}
       >
         {/* Media actions */}
@@ -106,7 +104,7 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
               onPress={onPickImage}
               accessibilityLabel="Attach image"
               disabled={disabled}
-              iconColor={colors.accent}
+              iconColor={theme.dark ? '#5E97F6' : theme.colors.primary}
             />
           )}
           {onRecordAudio && (
@@ -116,7 +114,7 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
               onPress={onRecordAudio}
               accessibilityLabel={isRecording ? 'Stop recording' : 'Record audio'}
               disabled={disabled && !isRecording}
-              iconColor={isRecording ? theme.colors.error : colors.accent}
+              iconColor={isRecording ? (theme.dark ? '#EF5350' : theme.colors.error) : (theme.dark ? '#66BB6A' : theme.colors.primary)}
               loading={isStoppingRecording}
             />
           )}
@@ -127,13 +125,13 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
           value={draft}
           onChangeText={onChangeDraft}
           placeholder="Message"
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={theme.colors.onSurfaceVariant}
           multiline
           mode="flat"
           style={[
             styles.textInput,
             {
-              color: colors.textPrimary,
+              color: theme.colors.onBackground,
               backgroundColor: 'transparent',
             },
           ]}
@@ -155,7 +153,7 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
             style={({ pressed }) => [
               styles.sendButton,
               {
-                backgroundColor: canSend ? theme.colors.primary : colors.borderColor,
+                backgroundColor: canSend ? theme.colors.primary : (theme.dark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.12)'),
                 opacity: pressed ? 0.8 : 1,
                 transform: [{ scale: pressed ? 0.95 : 1 }],
               },
@@ -164,7 +162,7 @@ export const InputToolbar: React.FC<InputToolbarProps> = ({
             <IconButton
               icon="send"
               size={20}
-              iconColor={canSend ? theme.colors.onPrimary : colors.textSecondary}
+              iconColor={canSend ? '#FFFFFF' : (theme.dark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.3)')}
               style={{ margin: 0 }}
             />
           </Pressable>
@@ -210,10 +208,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
     gap: spacing.xs,
+    minHeight: 56,
   },
   mediaActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
   },
   textInput: {
     flex: 1,
@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     fontSize: 15,
     paddingHorizontal: spacing.xs,
+    flexShrink: 1,
   },
   sendButton: {
     width: 44,
@@ -228,6 +229,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
 });
 

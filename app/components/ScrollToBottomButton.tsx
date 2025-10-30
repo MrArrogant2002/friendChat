@@ -1,6 +1,5 @@
-import { MotiView } from 'moti';
 import React from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Icon, useTheme } from 'react-native-paper';
 
 import { borderRadius, shadows, spacing } from '@/theme';
@@ -21,16 +20,7 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
   if (!visible) return null;
 
   return (
-    <MotiView
-      from={{ opacity: 0, scale: 0.8, translateY: 20 }}
-      animate={{ opacity: 1, scale: 1, translateY: 0 }}
-      exit={{ opacity: 0, scale: 0.8, translateY: 20 }}
-      transition={{
-        type: 'timing',
-        duration: 200,
-      }}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
@@ -45,10 +35,7 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
       >
         <Icon source="chevron-down" size={24} color={theme.colors.onPrimary} />
         {unreadCount !== undefined && unreadCount > 0 && (
-          <MotiView
-            from={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', damping: 10 }}
+          <View
             style={[
               styles.badge,
               {
@@ -58,7 +45,7 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
           />
         )}
       </Pressable>
-    </MotiView>
+    </View>
   );
 };
 

@@ -4,12 +4,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
-  useWindowDimensions,
-  View,
+  View
 } from 'react-native';
 import {
   ActivityIndicator,
+  Avatar,
   Button,
   HelperText,
   IconButton,
@@ -29,7 +30,7 @@ import { useChatSocket } from '@/hooks/useChatSocket';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useSession } from '@/hooks/useSession';
 import type { Message as ApiMessage, MessageAttachment } from '@/lib/api/types';
-import { borderRadius, chatColors, shadows, spacing } from '@/theme';
+import { borderRadius, shadows, spacing } from '@/theme';
 import type { RootStackScreenProps } from '@/types/navigation';
 
 function formatDuration(durationMillis: number | null | undefined): string {
@@ -52,15 +53,13 @@ function getAttachmentDuration(attachment: MessageAttachment): number | null {
   return null;
 }
 
-const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) => {
+const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, navigation }) => {
   const { chatId, title } = route.params;
   const theme = useTheme();
-  const { width: screenWidth } = useWindowDimensions();
-  const colors = theme.dark ? chatColors.dark : chatColors.light;
   const { token, user } = useSession();
   const [draft, setDraft] = useState('');
   const [conversation, setConversation] = useState<ApiMessage[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping] = useState(false); // Reserved for typing indicator
   const [showScrollButton, setShowScrollButton] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const isNearBottomRef = useRef(true);
@@ -80,8 +79,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const {
     pickImage,
-    captureImage,
-    loading: isPickingImage,
+    // loading: isPickingImage, // Reserved for future use
     error: imagePickerError,
     reset: resetImageError,
   } = useImagePicker();
@@ -224,6 +222,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
     });
   }, [addAttachment, imagePickerError, pickImage, resetImageError, token]);
 
+  /* Camera capture functionality - reserved for future use
   const handleCaptureImage = useCallback(async () => {
     if (!token) {
       return;
@@ -252,6 +251,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
       },
     });
   }, [addAttachment, captureImage, imagePickerError, resetImageError, token]);
+  */
 
   const handleToggleRecording = useCallback(async () => {
     if (!token) {
@@ -421,6 +421,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
     token,
   ]);
 
+  /* Helper functions - reserved for future use
   const resolveSenderLabel = (message: ApiMessage) => {
     const senderId =
       typeof message.sender === 'string'
@@ -441,7 +442,9 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
   const isComposerDisabled = !token || isSending || isStoppingRecording;
   const disableMediaActions =
     !token || isSending || isPickingImage || isStoppingRecording || isRecording;
+  */
 
+  /* Socket status message - reserved for future use
   const socketStatusMessage = useMemo(() => {
     if (!token) {
       return null;
@@ -457,6 +460,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
     }
     return null;
   }, [socketError, socketStatus, token]);
+  */
 
   const renderPendingAttachment = useCallback(
     (attachment: MessageAttachment) => {
@@ -472,12 +476,12 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
             style={[
               styles.audioAttachment,
               {
-                borderColor: theme.colors.surfaceVariant,
-                backgroundColor: theme.colors.secondaryContainer,
+                borderColor: theme.dark ? 'rgba(255, 255, 255, 0.12)' : theme.colors.surfaceVariant,
+                backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : theme.colors.secondaryContainer,
               },
             ]}
           >
-            <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
+            <Text variant="labelSmall" style={{ color: theme.dark ? '#5E97F6' : theme.colors.primary }}>
               Pending audio
             </Text>
             {formatted ? (
@@ -503,6 +507,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
     ]
   );
 
+  /* Message attachment renderer - reserved for future use
   const renderMessageAttachment = useCallback(
     (attachment: MessageAttachment) => {
       if (attachment.kind === 'image') {
@@ -547,6 +552,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
       theme.colors.surfaceVariant,
     ]
   );
+  */
 
   const listFooterComponent = useMemo(() => {
     return (
@@ -564,8 +570,8 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
                 style={[
                   styles.pendingAttachmentCard,
                   {
-                    borderColor: theme.colors.outlineVariant,
-                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.dark ? 'rgba(255, 255, 255, 0.12)' : theme.colors.outlineVariant,
+                    backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
                   },
                 ]}
               >
@@ -585,16 +591,63 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
     );
   }, [isTyping, pendingAttachments, theme.colors, renderPendingAttachment, removeAttachment]);
 
+  // Get gradient colors for avatar based on name
+  const gradientColors = useMemo(() => {
+    const gradients = [
+      ['#667eea', '#764ba2'],
+      ['#f093fb', '#f5576c'],
+      ['#4facfe', '#00f2fe'],
+      ['#43e97b', '#38f9d7'],
+      ['#fa709a', '#fee140'],
+      ['#30cfd0', '#330867'],
+      ['#a8edea', '#fed6e3'],
+      ['#ff9a9e', '#fecfef'],
+    ];
+    const index = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradients.length;
+    return gradients[index];
+  }, [title]);
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={['top', 'left', 'right']}
+      edges={['top']}
     >
+      {/* Modern Header */}
+      <View style={[styles.header, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.headerLeft}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+          >
+            <IconButton icon="arrow-left" size={24} iconColor={theme.colors.onBackground} style={{ margin: 0 }} />
+          </Pressable>
+          <Avatar.Text
+            size={40}
+            label={title.slice(0, 2).toUpperCase()}
+            style={{ backgroundColor: gradientColors[0] }}
+            labelStyle={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}
+          />
+          <View style={styles.headerTitleContainer}>
+            <Text variant="titleMedium" style={{ color: theme.colors.onBackground, fontWeight: '700', fontSize: 18 }}>
+              {title}
+            </Text>
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
+              {socketStatus === 'connected' ? 'online' : 'offline'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          <IconButton icon="video-outline" size={24} iconColor={theme.dark ? '#5E97F6' : theme.colors.primary} style={{ margin: 0 }} />
+          <IconButton icon="phone-outline" size={24} iconColor={theme.dark ? '#66BB6A' : theme.colors.primary} style={{ margin: 0 }} />
+          <IconButton icon="dots-vertical" size={24} iconColor={theme.colors.onBackground} style={{ margin: 0 }} />
+        </View>
+      </View>
+
       {/* Reconnection status banner */}
       {(socketStatus === 'reconnecting' || socketStatus === 'disconnected' || socketStatus === 'error') && (
-        <View style={[styles.reconnectionBanner, { backgroundColor: theme.colors.errorContainer }]}>
-          <ActivityIndicator size="small" color={theme.colors.error} />
-          <Text style={[styles.reconnectionText, { color: theme.colors.error }]}>
+        <View style={[styles.reconnectionBanner, { backgroundColor: theme.dark ? 'rgba(239, 83, 80, 0.15)' : theme.colors.errorContainer }]}>
+          <ActivityIndicator size="small" color={theme.dark ? '#EF5350' : theme.colors.error} />
+          <Text style={[styles.reconnectionText, { color: theme.dark ? '#EF5350' : theme.colors.error }]}>
             {socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected. Retrying...'}
           </Text>
         </View>
@@ -603,14 +656,8 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) =
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
-        <Text
-          variant="headlineSmall"
-          style={{ color: theme.colors.onBackground, marginBottom: 16 }}
-        >
-          {title}
-        </Text>
         <FlatList
           ref={flatListRef}
           data={conversation}
@@ -702,25 +749,44 @@ export default ChatRoomScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   reconnectionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     gap: 8,
-    borderRadius: borderRadius.md,
-    marginBottom: 8,
   },
   reconnectionText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   listContent: {
-    gap: 12,
-    paddingBottom: 20,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingBottom: 16,
+    paddingTop: 8,
   },
   messageBubble: {
     padding: spacing.md,

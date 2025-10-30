@@ -1,29 +1,83 @@
 import * as Haptics from 'expo-haptics';
-import { MotiView } from 'moti';
-import React, { useMemo, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  Image as RNImage,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { HelperText, IconButton, Surface, Text, TextInput, useTheme } from 'react-native-paper';
+import { Avatar, Button, Checkbox, Text, TextInput, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLoginMutation } from '@/hooks/useAuthApi';
-import { borderRadius, shadows, spacing } from '@/theme';
+import { borderRadius, spacing } from '@/theme';
 import type { AuthStackScreenProps } from '@/types/navigation';
 
 const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) => {
   const theme = useTheme();
-  const [email, setEmail] = useState('demo@friendly.chart');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [secure, setSecure] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { mutate: authenticate, loading, error, reset } = useLoginMutation();
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    loadSavedCredentials();
+  }, []);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const savedEmail = await SecureStore.getItemAsync('saved_email');
+      const savedPassword = await SecureStore.getItemAsync('saved_password');
+      const savedTimestamp = await SecureStore.getItemAsync('saved_timestamp');
+
+      if (savedEmail && savedPassword && savedTimestamp) {
+        const timestamp = parseInt(savedTimestamp, 10);
+        const daysPassed = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
+
+        // Check if credentials are still valid (within 30 days)
+        if (daysPassed <= 30) {
+          setEmail(savedEmail);
+          setPassword(savedPassword);
+          setRememberMe(true);
+        } else {
+          // Clear expired credentials
+          await clearSavedCredentials();
+        }
+      }
+    } catch (error) {
+      console.log('Error loading saved credentials:', error);
+    }
+  };
+
+  const clearSavedCredentials = async () => {
+    try {
+      await SecureStore.deleteItemAsync('saved_email');
+      await SecureStore.deleteItemAsync('saved_password');
+      await SecureStore.deleteItemAsync('saved_timestamp');
+    } catch (error) {
+      console.log('Error clearing credentials:', error);
+    }
+  };
+
+  const saveCredentials = async () => {
+    try {
+      if (rememberMe) {
+        await SecureStore.setItemAsync('saved_email', email);
+        await SecureStore.setItemAsync('saved_password', password);
+        await SecureStore.setItemAsync('saved_timestamp', Date.now().toString());
+      } else {
+        await clearSavedCredentials();
+      }
+    } catch (error) {
+      console.log('Error saving credentials:', error);
+    }
+  };
 
   const errors = useMemo(() => {
     const emailError = submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -40,11 +94,12 @@ const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) =>
     }
     try {
       await authenticate({ email, password });
+      // Save credentials if remember me is checked
+      await saveCredentials();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.replace('AppTabs');
     } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // Error state handled via hook; no further action needed here.
     }
   };
 
@@ -64,243 +119,218 @@ const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) =>
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      edges={['top', 'left', 'right']}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'left', 'right', 'bottom']}
     >
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-        behavior={Platform.select({ ios: 'padding', android: undefined })}
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <MotiView
-            from={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'timing', duration: 600 }}
-            style={styles.logoContainer}
-          >
-            <RNImage
-              source={require('../../assets/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
+          {/* FriendlyChat Logo */}
+          <View style={styles.logoContainer}>
+            {/* Emoji Logo */}
+            <View style={[styles.logoCircle, { backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', borderColor: theme.colors.primary }]}>
+              <Text style={styles.logoEmoji}>💬</Text>
+            </View>
+            <Text
+              style={[
+                styles.logoText,
+                {
+                  color: theme.colors.onBackground,
+                  fontFamily: Platform.select({
+                    ios: 'System',
+                    android: 'Roboto',
+                    default: 'sans-serif',
+                  }),
+                },
+              ]}
+            >
+              FriendlyChat
+            </Text>
+          </View>
+
+          {/* Avatar (for saved account state) */}
+          <View style={styles.avatarContainer}>
+            <Avatar.Text
+              size={90}
+              label="JW"
+              style={{ backgroundColor: theme.colors.primary }}
+              labelStyle={{ fontSize: 36, fontWeight: '600', color: '#FFFFFF' }}
             />
             <Text
-              variant="displaySmall"
+              variant="titleMedium"
               style={{
-                color: theme.colors.primary,
-                fontWeight: '700',
-                textAlign: 'center',
+                color: theme.colors.onBackground,
+                fontWeight: '600',
+                marginTop: spacing.md,
               }}
             >
-              FriendlyChart
+              jacob_w
             </Text>
-            <Text
-              variant="bodyLarge"
-              style={{
-                color: theme.colors.onSurfaceVariant,
-                textAlign: 'center',
-                marginTop: spacing.sm,
-              }}
-            >
-              Connect with friends instantly
-            </Text>
-          </MotiView>
+          </View>
 
-          <MotiView
-            from={{ opacity: 0, translateY: 30 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', duration: 500, delay: 200 }}
-          >
-            <Surface
+          {/* Login Form */}
+          <View style={styles.formContainer}>
+            <TextInput
+              mode="outlined"
+              placeholder="Username or email"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={email}
+              onChangeText={handleEmailChange}
+              autoCapitalize="none"
+              keyboardType="email-address"
               style={[
-                styles.card,
+                styles.input,
                 {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.outlineVariant,
+                  backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
                 },
-                shadows.lg,
               ]}
-              elevation={2}
+              outlineStyle={{
+                borderColor: theme.colors.outline,
+                borderWidth: 1,
+                borderRadius: borderRadius.sm,
+              }}
+              textColor={theme.colors.onBackground}
+              error={errors.email}
+              dense
+            />
+
+            <TextInput
+              mode="outlined"
+              placeholder="Password"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={password}
+              onChangeText={handlePasswordChange}
+              secureTextEntry={secure}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                },
+              ]}
+              outlineStyle={{
+                borderColor: theme.colors.outline,
+                borderWidth: 1,
+                borderRadius: borderRadius.sm,
+              }}
+              textColor={theme.colors.onBackground}
+              error={errors.password}
+              dense
+              right={
+                <TextInput.Icon
+                  icon={secure ? 'eye-off' : 'eye'}
+                  onPress={() => setSecure(!secure)}
+                  forceTextInputFocus={false}
+                />
+              }
+            />
+
+            {/* Remember Me Checkbox */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setRememberMe(!rememberMe);
+              }}
+              style={styles.rememberMeContainer}
+            >
+              <Checkbox
+                status={rememberMe ? 'checked' : 'unchecked'}
+                onPress={() => setRememberMe(!rememberMe)}
+                color={theme.colors.primary}
+              />
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSurfaceVariant, marginLeft: spacing.xs }}
+              >
+                Remember me
+              </Text>
+            </Pressable>
+
+            {/* Forgot Password */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={styles.forgotPassword}
             >
               <Text
-                variant="headlineMedium"
-                style={{
-                  color: theme.colors.onSurface,
-                  fontWeight: '600',
-                }}
+                variant="labelMedium"
+                style={{ color: theme.colors.primary, fontWeight: '600' }}
               >
-                Welcome back
+                Forgot password?
               </Text>
-              <Text
-                variant="bodySmall"
-                style={{
-                  color: theme.colors.onSurfaceVariant,
-                  marginTop: spacing.xs,
-                  marginBottom: spacing.sm,
-                }}
-              >
-                Sign in to continue
-              </Text>
+            </Pressable>
 
-              <View style={styles.fieldGroup}>
-                <TextInput
-                  label="Email"
-                  value={email}
-                  onChangeText={handleEmailChange}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  mode="outlined"
-                  error={errors.email}
-                  left={<TextInput.Icon icon="email" />}
-                  style={{ backgroundColor: theme.colors.surface }}
-                  outlineColor={theme.colors.outlineVariant}
-                  activeOutlineColor={theme.colors.primary}
-                />
-                {errors.email && (
-                  <HelperText type="error" visible={errors.email}>
-                    Please enter a valid email address
-                  </HelperText>
-                )}
-              </View>
+            {/* Login Button */}
+            <Button
+              mode="contained"
+              onPress={handleLogin}
+              loading={loading}
+              disabled={loading}
+              style={[
+                styles.loginButton,
+                {
+                  backgroundColor: theme.colors.primary,
+                },
+              ]}
+              labelStyle={styles.loginButtonText}
+              contentStyle={styles.loginButtonContent}
+            >
+              {loading ? 'Logging in...' : 'Log in'}
+            </Button>
 
-              <View style={styles.fieldGroup}>
-                <TextInput
-                  label="Password"
-                  value={password}
-                  onChangeText={handlePasswordChange}
-                  secureTextEntry={secure}
-                  mode="outlined"
-                  error={errors.password}
-                  left={<TextInput.Icon icon="lock" />}
-                  right={
-                    <TextInput.Icon
-                      icon={secure ? 'eye-off' : 'eye'}
-                      onPress={() => {
-                        setSecure((prev) => !prev);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      forceTextInputFocus={false}
-                    />
-                  }
-                  style={{ backgroundColor: theme.colors.surface }}
-                  outlineColor={theme.colors.outlineVariant}
-                  activeOutlineColor={theme.colors.primary}
-                  onSubmitEditing={handleLogin}
-                  returnKeyType="go"
-                />
-                {errors.password && (
-                  <HelperText type="error" visible={errors.password}>
-                    Password must be at least 6 characters
-                  </HelperText>
-                )}
-              </View>
-
-              {/* Sign In Button - Always visible */}
-              <Pressable
-                onPress={handleLogin}
-                disabled={loading}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  {
-                    backgroundColor: loading ? '#66BB6A' : '#4CAF50',
-                    opacity: pressed ? 0.85 : 1,
-                    transform: [{ scale: pressed ? 0.98 : 1 }],
-                  },
-                ]}
-                accessible={true}
-                accessibilityLabel="Sign in button"
-                accessibilityRole="button"
-              >
-                <Text
-                  style={styles.primaryButtonText}
-                >
-                  {loading ? 'Signing in...' : 'Sign In'}
-                </Text>
-              </Pressable>
-
-              {error && (
-                <MotiView
-                  from={{ opacity: 0, translateY: -10 }}
-                  animate={{ opacity: 1, translateY: 0 }}
-                  transition={{ type: 'timing', duration: 300 }}
-                >
-                  <Surface
-                    style={[
-                      styles.errorContainer,
-                      { backgroundColor: theme.colors.errorContainer },
-                    ]}
-                  >
-                    <IconButton
-                      icon="alert-circle"
-                      size={20}
-                      iconColor={theme.colors.error}
-                      style={{ margin: 0 }}
-                    />
-                    <Text
-                      variant="bodyMedium"
-                      style={{
-                        color: theme.colors.onErrorContainer,
-                        flex: 1,
-                      }}
-                    >
-                      {error.message}
-                    </Text>
-                  </Surface>
-                </MotiView>
-              )}
-
-              <View style={styles.divider}>
-                <View
-                  style={[styles.dividerLine, { backgroundColor: theme.colors.outlineVariant }]}
-                />
+            {/* Error Message */}
+            {error && (
+              <View style={styles.errorContainer}>
                 <Text
                   variant="bodySmall"
-                  style={{
-                    color: theme.colors.onSurfaceVariant,
-                    paddingHorizontal: spacing.sm,
-                  }}
+                  style={{ color: theme.colors.error, textAlign: 'center' }}
                 >
-                  or
+                  {error.message}
                 </Text>
-                <View
-                  style={[styles.dividerLine, { backgroundColor: theme.colors.outlineVariant }]}
-                />
               </View>
-
-              {/* Secondary Button - Create Account */}
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  navigation.navigate('Register');
-                }}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderWidth: 2,
-                    borderColor: '#4CAF50',
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                accessible={true}
-                accessibilityLabel="Create account button"
-                accessibilityRole="button"
-              >
-                <Text
-                  style={[
-                    styles.secondaryButtonText,
-                    { color: theme.dark ? '#66BB6A' : '#2E7D32' },
-                  ]}
-                >
-                  New here? Create an account
-                </Text>
-              </Pressable>
-            </Surface>
-          </MotiView>
+            )}
+          </View>
         </ScrollView>
+
+        {/* Bottom Section */}
+        <View
+          style={[
+            styles.bottomContainer,
+            { borderTopColor: theme.colors.outline, backgroundColor: theme.colors.background },
+          ]}
+        >
+          <View style={styles.signupContainer}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+              Don't have an account?{' '}
+            </Text>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate('Register');
+              }}
+            >
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.primary, fontWeight: '600' }}
+              >
+                Sign up.
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text
+            variant="labelSmall"
+            style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.md }}
+          >
+            FriendlyChat © 2025
+          </Text>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -312,92 +342,81 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxxl,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xxxl,
   },
-  logo: {
-    width: 80,
-    height: 80,
-    marginBottom: spacing.sm,
-  },
-  card: {
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-    borderWidth: 1,
-  },
-  fieldGroup: {
-    marginBottom: spacing.sm,
-  },
-  primaryButton: {
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
-    width: '100%',
-    marginTop: spacing.sm,
-    // Shadows for elevation
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
-    borderWidth: 2,
-    borderColor: '#388E3C',
+    marginBottom: spacing.md,
   },
-  primaryButtonText: {
-    color: '#000000ff',
+  logoEmoji: {
+    fontSize: 50,
+  },
+  logoText: {
+    fontSize: 32,
     fontWeight: '700',
-    fontSize: 18,
     letterSpacing: 0.5,
-    textAlign: 'center',
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  formContainer: {
+    marginTop: spacing.lg,
+  },
+  input: {
+    marginBottom: spacing.sm,
+    fontSize: 14,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+  },
+  loginButton: {
+    marginTop: spacing.sm,
+    borderRadius: borderRadius.sm,
+  },
+  loginButtonContent: {
+    paddingVertical: spacing.xs,
+  },
+  loginButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
     marginTop: spacing.md,
-    gap: spacing.xs,
+    paddingVertical: spacing.sm,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  secondaryButton: {
-    borderRadius: borderRadius.lg,
+  bottomContainer: {
+    borderTopWidth: 1,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-    width: '100%',
-    marginTop: spacing.sm,
-    // Subtle shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  secondaryButtonText: {
-    fontWeight: '600',
-    fontSize: 16,
-    letterSpacing: 0.3,
-    textAlign: 'center',
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

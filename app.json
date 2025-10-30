@@ -4,7 +4,7 @@
     "slug": "friendly-chart",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "friendchart",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,9 +13,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ECF4E8",
-        "foregroundImage": "./assets/logo.png",
-        "monochromeImage": "./assets/logo.png"
+        "foregroundImage": "./assets/images/logo.png",
+        "monochromeImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -23,19 +22,17 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/logo.png"
+      "favicon": "./assets/images/logo.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/logo.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ECF4E8",
           "dark": {
-            "image": "./assets/logo.png",
-            "backgroundColor": "#1C1C1C"
+            "image": "./assets/images/logo.png"
           }
         }
       ],

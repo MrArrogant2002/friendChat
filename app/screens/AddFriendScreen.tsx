@@ -1,19 +1,18 @@
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { MotiView } from 'moti';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import {
-  ActivityIndicator,
-  Avatar,
-  HelperText,
-  IconButton,
-  List,
-  Searchbar,
-  Snackbar,
-  Surface,
-  Text,
-  useTheme,
+    ActivityIndicator,
+    Avatar,
+    HelperText,
+    IconButton,
+    List,
+    Searchbar,
+    Snackbar,
+    Surface,
+    Text,
+    useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -44,7 +43,6 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
   });
   const {
     mutate: addFriend,
-    loading: isAdding,
     error: addError,
     reset: resetAddError,
   } = useAddFriendMutation();
@@ -87,7 +85,7 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
         setAddedFriendId(profile.id);
         setSnackbarMessage(`✓ Added ${profile.name || profile.email}`);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (error) {
+      } catch {
         // Rollback optimistic update on error
         setOptimisticAdding((prev) => {
           const next = new Set(prev);
@@ -127,11 +125,7 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
       const isOptimisticallyAdding = optimisticAdding.has(item.id);
 
       return (
-        <MotiView
-          from={{ opacity: 0, translateY: 20 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'timing', duration: 300, delay: index * 50 }}
-        >
+        <View>
           <List.Item
             title={item.name || item.email}
             description={item.email}
@@ -212,7 +206,7 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
             titleStyle={{ color: theme.colors.onSurface, fontWeight: '500' }}
             descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
           />
-        </MotiView>
+        </View>
       );
     },
     [addedFriendId, optimisticAdding, handleAddFriend, handleChatNow, theme.colors]
@@ -339,11 +333,7 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top', 'left', 'right']}
     >
-      <MotiView
-        from={{ opacity: 0, translateY: -20 }}
-        animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 400 }}
-      >
+      <View>
         <View style={styles.headerRow}>
           <View>
             <Text
@@ -380,13 +370,9 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
             />
           </Pressable>
         </View>
-      </MotiView>
+      </View>
 
-      <MotiView
-        from={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'timing', duration: 400, delay: 100 }}
-      >
+      <View>
         <Searchbar
           placeholder="Search users..."
           value={query}
@@ -403,11 +389,11 @@ const AddFriendScreen: React.FC<RootStackScreenProps<'AddFriend'>> = ({ navigati
           autoFocus
           elevation={0}
         />
-      </MotiView>
+      </View>
 
       <FlatList
         data={searchResults}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: FriendProfile) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={renderItem}
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}

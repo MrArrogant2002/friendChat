@@ -1,7 +1,7 @@
 import type { Theme as NavigationTheme } from '@react-navigation/native';
 import {
-    DarkTheme as NavigationDarkTheme,
-    DefaultTheme as NavigationLightTheme,
+  DarkTheme as NavigationDarkTheme,
+  DefaultTheme as NavigationLightTheme,
 } from '@react-navigation/native';
 import { Dimensions, Platform } from 'react-native';
 import type { MD3Theme } from 'react-native-paper';
@@ -98,70 +98,70 @@ const { LightTheme: navigationLightBase, DarkTheme: navigationDarkBase } = adapt
   reactNavigationDark: NavigationDarkTheme,
 });
 
-// Chat-specific colors (used across the app)
+// Chat-specific colors (Instagram/WhatsApp style)
 export const chatColors = {
   light: {
-    background: '#ECF4E8', // Main background
-    messageSent: '#CBF3BB', // User's message bubble
-    messageReceived: '#93BFC7', // Other user's message bubble
-    accent: '#ABE7B2', // Secondary tint/highlights
-    inputBackground: '#FFFFFF',
-    borderColor: 'rgba(147, 191, 199, 0.2)', // Soft blue with opacity
-    textPrimary: '#1C1C1C',
-    textSecondary: '#4A5A4A',
-    textOnSent: '#1C1C1C', // Text on sent messages
-    textOnReceived: '#FFFFFF', // Text on received messages
+    background: '#FFFFFF', // Pure white background
+    messageSent: '#DCF8C6', // WhatsApp green for sent messages
+    messageReceived: '#FFFFFF', // White for received messages
+    accent: '#0095F6', // Instagram blue
+    inputBackground: '#F0F0F0',
+    borderColor: '#DBDBDB', // Instagram gray border
+    textPrimary: '#262626', // Instagram dark text
+    textSecondary: '#8E8E8E', // Instagram gray text
+    textOnSent: '#000000', // Text on sent messages
+    textOnReceived: '#000000', // Text on received messages
   },
   dark: {
-    background: '#0F1410',
-    messageSent: '#9DD3A7', // Softer green for dark mode
-    messageReceived: '#7BA8B0', // Muted blue for dark mode
-    accent: '#7BA8B0',
-    inputBackground: '#1E2622',
-    borderColor: 'rgba(123, 168, 176, 0.2)',
-    textPrimary: '#E5E9E6',
-    textSecondary: '#B8C2BD',
-    textOnSent: '#1A2420',
-    textOnReceived: '#E5E9E6',
+    background: '#000000', // Pure black background
+    messageSent: '#056162', // Dark teal for sent messages
+    messageReceived: '#262626', // Dark gray for received messages
+    accent: '#0095F6', // Instagram blue (same)
+    inputBackground: '#121212',
+    borderColor: '#262626',
+    textPrimary: '#FFFFFF',
+    textSecondary: '#A8A8A8',
+    textOnSent: '#FFFFFF',
+    textOnReceived: '#FFFFFF',
   },
 };
 
-// Light Theme - Soft green and blue palette
+// Light Theme - Instagram style
 export const lightTheme: MD3Theme = {
   ...baseLight,
   colors: {
     ...baseLight.colors,
-    // Main colors
-    primary: '#93BFC7', // Soft blue for icons and accents
-    primaryContainer: '#CBF3BB', // User's sent message bubbles
-    onPrimaryContainer: '#1C1C1C',
-    secondary: '#ABE7B2', // Secondary tint/accents
-    onSecondary: '#1C1C1C',
+    // Main colors - Instagram blue
+    primary: '#0095F6', // Instagram blue
+    primaryContainer: '#E1F5FE', // Light blue container
+    onPrimaryContainer: '#01579B',
+    secondary: '#262626', // Instagram dark
+    onSecondary: '#FFFFFF',
 
-    // Background colors
-    background: '#ECF4E8', // Soft greenish background (main app background)
-    onBackground: '#1C1C1C', // Dark text
-    surface: '#FFFFFF',
-    onSurface: '#1C1C1C',
-    surfaceVariant: '#E5F0E1',
-    onSurfaceVariant: '#4A5A4A',
+    // Background colors - Clean white
+    background: '#FAFAFA', // Instagram light gray background
+    onBackground: '#262626',
+    surface: '#FFFFFF', // Pure white cards
+    onSurface: '#262626',
+    surfaceVariant: '#F0F0F0',
+    onSurfaceVariant: '#8E8E8E',
 
     // Utility colors
-    outline: '#93BFC7',
-    outlineVariant: 'rgba(147, 191, 199, 0.2)',
-    tertiary: '#ABE7B2',
-    onTertiary: '#1C1C1C',
+    outline: '#DBDBDB', // Instagram border gray
+    outlineVariant: '#EFEFEF',
+    tertiary: '#00376B',
+    onTertiary: '#FFFFFF',
 
     // Semantic colors
-    error: '#D32F2F',
+    error: '#ED4956', // Instagram red
     onError: '#FFFFFF',
     errorContainer: '#FFEBEE',
     onErrorContainer: '#B71C1C',
 
-    // Inverse colors for dark elements on light theme
-    inverseSurface: '#1C1C1C',
-    inverseOnSurface: '#ECECEC',
-    inversePrimary: '#CBF3BB',
+    // Inverse colors
+    inverseSurface: '#262626',
+    inverseOnSurface: '#FFFFFF',
+    inversePrimary: '#0095F6',
   },
   fonts: {
     ...baseLight.fonts,
@@ -180,42 +180,42 @@ export const lightTheme: MD3Theme = {
   },
 };
 
-// Dark Theme - Improved contrast and readability
+// Dark Theme - Instagram/WhatsApp dark mode
 export const darkTheme: MD3Theme = {
   ...baseDark,
   colors: {
     ...baseDark.colors,
-    // Main colors - softer, less harsh
-    primary: '#7BA8B0', // Slightly muted blue for better dark mode
-    primaryContainer: '#9DD3A7', // Softer green (less bright than #CBF3BB)
-    onPrimaryContainer: '#1A2420', // Darker text for better contrast
-    secondary: '#7BA8B0',
-    onSecondary: '#1A2420',
+    // Main colors - Instagram blue stays same
+    primary: '#0095F6', // Instagram blue
+    primaryContainer: '#004A77', // Darker blue container
+    onPrimaryContainer: '#B3E5FC',
+    secondary: '#FFFFFF',
+    onSecondary: '#000000',
 
-    // Background colors - less extreme contrast
-    background: '#0F1410', // Very dark green-tinted background
-    onBackground: '#E5E9E6', // Slightly softer white
-    surface: '#1E2622', // Dark surface with green tint
-    onSurface: '#E5E9E6',
-    surfaceVariant: '#2A3330', // Lighter variant for contrast
-    onSurfaceVariant: '#B8C2BD', // Muted gray-green
+    // Background colors - Pure black Instagram style
+    background: '#000000', // Pure black
+    onBackground: '#FFFFFF',
+    surface: '#121212', // Slightly lighter black for cards
+    onSurface: '#FFFFFF',
+    surfaceVariant: '#1C1C1C',
+    onSurfaceVariant: '#A8A8A8',
 
     // Utility colors
-    outline: '#7BA8B0',
-    outlineVariant: '#3A4440', // Subtle borders
-    tertiary: '#9DD3A7',
-    onTertiary: '#1A2420',
+    outline: '#262626', // Dark gray border
+    outlineVariant: '#1C1C1C',
+    tertiary: '#0095F6',
+    onTertiary: '#FFFFFF',
 
-    // Semantic colors - softer for dark mode
-    error: '#E57373', // Softer red
-    onError: '#1A2420',
-    errorContainer: '#4A2C2C', // Less harsh red container
+    // Semantic colors
+    error: '#F23645', // Slightly brighter red for dark mode
+    onError: '#FFFFFF',
+    errorContainer: '#4A2C2C',
     onErrorContainer: '#FFCDD2',
 
     // Inverse colors
-    inverseSurface: '#E5E9E6',
-    inverseOnSurface: '#1A2420',
-    inversePrimary: '#7BA8B0',
+    inverseSurface: '#FFFFFF',
+    inverseOnSurface: '#000000',
+    inversePrimary: '#0095F6',
   },
   fonts: {
     ...baseDark.fonts,
@@ -241,9 +241,9 @@ export const navigationLightTheme: NavigationTheme = {
     primary: lightTheme.colors.primary,
     background: lightTheme.colors.background,
     card: lightTheme.colors.surface,
-    text: '#333333',
-    border: lightTheme.colors.outlineVariant,
-    notification: lightTheme.colors.primaryContainer,
+    text: '#262626',
+    border: lightTheme.colors.outline,
+    notification: lightTheme.colors.primary,
   },
 };
 
@@ -254,8 +254,8 @@ export const navigationDarkTheme: NavigationTheme = {
     primary: darkTheme.colors.primary,
     background: darkTheme.colors.background,
     card: darkTheme.colors.surface,
-    text: '#ECECEC',
-    border: darkTheme.colors.outlineVariant,
-    notification: darkTheme.colors.primaryContainer,
+    text: '#FFFFFF',
+    border: darkTheme.colors.outline,
+    notification: darkTheme.colors.primary,
   },
 };

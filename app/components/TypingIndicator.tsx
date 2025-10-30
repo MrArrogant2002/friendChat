@@ -1,4 +1,3 @@
-import { MotiView } from 'moti';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Surface, Text, useTheme } from 'react-native-paper';
@@ -28,12 +27,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ names = [] }) 
   };
 
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 10 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      exit={{ opacity: 0, translateY: 10 }}
-      transition={{ type: 'timing', duration: 200 }}
-    >
+    <View>
       <Surface
         elevation={1}
         style={[
@@ -52,23 +46,13 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ names = [] }) 
         </Text>
         <View style={styles.dotsContainer}>
           {[0, 1, 2].map((index) => (
-            <MotiView
-              key={index}
-              from={{ opacity: 0.3, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{
-                type: 'timing',
-                duration: 600,
-                delay: index * 200,
-                loop: true,
-              }}
-            >
+            <View key={index}>
               <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
-            </MotiView>
+            </View>
           ))}
         </View>
       </Surface>
-    </MotiView>
+    </View>
   );
 };
 

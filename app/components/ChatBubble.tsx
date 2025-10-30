@@ -1,4 +1,3 @@
-import { MotiView } from 'moti';
 import React, { memo } from 'react';
 import {
     Image,
@@ -10,7 +9,7 @@ import {
 import { Surface, Text, useTheme } from 'react-native-paper';
 
 import type { Message, MessageAttachment } from '@/lib/api/types';
-import { borderRadius, chatColors, shadows, spacing } from '@/theme';
+import { borderRadius, spacing } from '@/theme';
 
 interface ChatBubbleProps {
   message: Message;
@@ -53,12 +52,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
 }) => {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
-  const colors = theme.dark ? chatColors.dark : chatColors.light;
 
-  const maxBubbleWidth = screenWidth * 0.65; // 65% of screen width
+  const maxBubbleWidth = screenWidth * 0.75; // 75% of screen width
 
-  const bubbleBackgroundColor = isMine ? colors.messageSent : colors.messageReceived;
-  const textColor = isMine ? colors.textOnSent : colors.textOnReceived;
+  // Modern bubble colors
+  const bubbleBackgroundColor = isMine 
+    ? theme.colors.primary 
+    : (theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)');
+  const textColor = isMine ? '#FFFFFF' : theme.colors.onBackground;
 
   const renderAttachment = (attachment: MessageAttachment, attachmentIndex: number) => {
     if (attachment.kind === 'image' && attachment.url) {
@@ -95,20 +96,11 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
   };
 
   return (
-    <MotiView
-      from={{ opacity: 0, translateY: 20, scale: 0.95 }}
-      animate={{ opacity: isPending ? 0.7 : 1, translateY: 0, scale: 1 }}
-      transition={{
-        type: 'timing',
-        duration: 300,
-        delay: index < 5 ? index * 50 : 0, // Stagger animation for first 5 messages
-      }}
-      style={[styles.container, isMine ? styles.alignRight : styles.alignLeft]}
-    >
+    <View style={[styles.container, isMine ? styles.alignRight : styles.alignLeft]}>
       <Pressable
         onLongPress={onLongPress}
         onPress={onPress}
-        style={({ pressed }) => [
+        style={({ pressed }: { pressed: boolean }) => [
           {
             opacity: pressed ? 0.9 : 1,
             transform: [{ scale: pressed ? 0.98 : 1 }],
@@ -116,16 +108,17 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         ]}
       >
         <Surface
-          elevation={2}
+          elevation={0}
           style={[
             styles.bubble,
             {
               backgroundColor: bubbleBackgroundColor,
               maxWidth: maxBubbleWidth,
+              borderTopLeftRadius: borderRadius.xl,
+              borderTopRightRadius: borderRadius.xl,
               borderBottomRightRadius: isMine ? spacing.xs : borderRadius.xl,
               borderBottomLeftRadius: isMine ? borderRadius.xl : spacing.xs,
             },
-            shadows.md,
           ]}
         >
           {/* Sender name for received messages */}
@@ -135,7 +128,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
               style={[
                 styles.senderName,
                 {
-                  color: theme.dark ? '#1C1C1C' : '#2A4A4A',
+                  color: theme.dark ? '#5E97F6' : theme.colors.primary,
                 },
               ]}
             >
@@ -161,7 +154,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
           {/* Attachments */}
           {message.attachments && message.attachments.length > 0 && (
             <View style={styles.attachmentsContainer}>
-              {message.attachments.map((attachment, idx) =>
+              {message.attachments.map((attachment: MessageAttachment, idx: number) =>
                 renderAttachment(attachment, idx)
               )}
             </View>
@@ -176,8 +169,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                   styles.timestamp,
                   {
                     color: isMine
-                      ? `${textColor}99` // 60% opacity
-                      : `${textColor}CC`, // 80% opacity
+                      ? 'rgba(255, 255, 255, 0.7)' // 70% opacity white for sent messages
+                      : theme.colors.onSurfaceVariant, // Standard secondary text
                   },
                 ]}
               >
@@ -194,7 +187,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                   style={[
                     styles.statusIcon,
                     {
-                      color: isPending ? `${textColor}66` : colors.accent,
+                      color: isPending ? 'rgba(255, 255, 255, 0.4)' : '#FFFFFF',
                     },
                   ]}
                 >
@@ -205,7 +198,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
           )}
         </Surface>
       </Pressable>
-    </MotiView>
+    </View>
   );
 };
 
