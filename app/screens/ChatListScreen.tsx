@@ -49,6 +49,7 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
     loading: isLoadingRooms,
     error: roomsError,
     refetch: refetchRooms,
+    isStale,
   } = useChatRoomsQuery({ enabled: Boolean(token) });
   const { data: friends } = useFriendsList({ enabled: Boolean(token) });
 
@@ -136,6 +137,13 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
             >
               FriendlyChat
             </Text>
+            {isStale && (
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.primary}
+                style={{ marginLeft: spacing.sm }}
+              />
+            )}
           </View>
         </View>
       </View>

@@ -22,7 +22,7 @@ import type { AppTabsScreenProps, RootStackParamList } from '@/types/navigation'
 const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) => {
   const theme = useTheme();
   const { token, user } = useSession();
-  const { data: friends, loading, error, refetch } = useFriendsList({ enabled: Boolean(token) });
+  const { data: friends, loading, error, refetch, isStale } = useFriendsList({ enabled: Boolean(token) });
 
   useFocusEffect(
     useCallback(() => {
@@ -163,16 +163,25 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
           },
         ]}
       >
-        <Text
-          variant="titleLarge"
-          style={{
-            color: theme.colors.onBackground,
-            fontWeight: '700',
-            fontSize: 24,
-          }}
-        >
-          FriendlyChat
-        </Text>
+        <View style={styles.headerContent}>
+          <Text
+            variant="titleLarge"
+            style={{
+              color: theme.colors.onBackground,
+              fontWeight: '700',
+              fontSize: 24,
+            }}
+          >
+            FriendlyChat
+          </Text>
+          {isStale && (
+            <ActivityIndicator
+              size="small"
+              color={theme.colors.primary}
+              style={{ marginLeft: spacing.sm }}
+            />
+          )}
+        </View>
       </View>
 
       {/* Story-style Your Story Section */}
@@ -304,6 +313,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   storiesSection: {
     paddingVertical: spacing.md,

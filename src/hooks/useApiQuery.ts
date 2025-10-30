@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ApiClientError } from '@/lib/api/client';
 
-export type ApiQueryOptions = {
+export type ApiQueryOptions<TData = unknown> = {
   enabled?: boolean;
   immediate?: boolean;
+  initialData?: TData;
 };
 
 export type ApiQueryResult<TData> = {
@@ -18,13 +19,13 @@ export type ApiQueryResult<TData> = {
 export function useApiQuery<TData>(
   queryKey: unknown,
   queryFn: () => Promise<TData>,
-  options: ApiQueryOptions = {}
+  options: ApiQueryOptions<TData> = {}
 ): ApiQueryResult<TData> {
   const enabled = options.enabled ?? true;
   const shouldLoadImmediately = options.immediate ?? true;
 
-  const [data, setData] = useState<TData | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(enabled && shouldLoadImmediately);
+  const [data, setData] = useState<TData | undefined>(options.initialData);
+  const [loading, setLoading] = useState<boolean>(enabled && shouldLoadImmediately && !options.initialData);
   const [error, setError] = useState<ApiClientError | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 

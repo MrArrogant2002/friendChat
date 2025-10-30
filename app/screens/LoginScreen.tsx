@@ -2,12 +2,12 @@ import * as Haptics from 'expo-haptics';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    View,
 } from 'react-native';
 import { Avatar, Button, Checkbox, Text, TextInput, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -155,24 +155,26 @@ const LoginScreen: React.FC<AuthStackScreenProps<'Login'>> = ({ navigation }) =>
           </View>
 
           {/* Avatar (for saved account state) */}
-          <View style={styles.avatarContainer}>
-            <Avatar.Text
-              size={90}
-              label="JW"
-              style={{ backgroundColor: theme.colors.primary }}
-              labelStyle={{ fontSize: 36, fontWeight: '600', color: '#FFFFFF' }}
-            />
-            <Text
-              variant="titleMedium"
-              style={{
-                color: theme.colors.onBackground,
-                fontWeight: '600',
-                marginTop: spacing.md,
-              }}
-            >
-              jacob_w
-            </Text>
-          </View>
+          {rememberMe && email && (
+            <View style={styles.avatarContainer}>
+              <Avatar.Text
+                size={90}
+                label={email.slice(0, 2).toUpperCase()}
+                style={{ backgroundColor: theme.colors.primary }}
+                labelStyle={{ fontSize: 36, fontWeight: '600', color: '#FFFFFF' }}
+              />
+              <Text
+                variant="titleMedium"
+                style={{
+                  color: theme.colors.onBackground,
+                  fontWeight: '600',
+                  marginTop: spacing.md,
+                }}
+              >
+                {email.split('@')[0]}
+              </Text>
+            </View>
+          )}
 
           {/* Login Form */}
           <View style={styles.formContainer}>
