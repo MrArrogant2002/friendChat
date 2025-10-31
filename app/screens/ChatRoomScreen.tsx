@@ -1,28 +1,18 @@
+import { MotiView } from 'moti';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View
-} from 'react-native';
+import { FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
-  Avatar,
   Button,
   HelperText,
   IconButton,
   Surface,
   Text,
-  useTheme
+  TextInput,
+  useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ChatBubble from '@/components/ChatBubble';
-import { InputToolbar } from '@/components/InputToolbar';
-import { ScrollToBottomButton } from '@/components/ScrollToBottomButton';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useMessagesQuery, useSendMessageMutation } from '@/hooks/useChatApi';
@@ -53,17 +43,14 @@ function getAttachmentDuration(attachment: MessageAttachment): number | null {
   return null;
 }
 
-const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, navigation }) => {
+const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route }) => {
   const { chatId, title } = route.params;
   const theme = useTheme();
   const { token, user } = useSession();
   const [draft, setDraft] = useState('');
   const [conversation, setConversation] = useState<ApiMessage[]>([]);
-  const [isTyping] = useState(false); // Reserved for typing indicator
-  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const isNearBottomRef = useRef(true);
-  const isInitialLoadRef = useRef(true);
   const {
     data: remoteMessages,
     loading: isLoadingMessages,
@@ -79,7 +66,8 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const {
     pickImage,
-    // loading: isPickingImage, // Reserved for future use
+    captureImage,
+    loading: isPickingImage,
     error: imagePickerError,
     reset: resetImageError,
   } = useImagePicker();
@@ -94,54 +82,32 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
   const isRecording = recordingStatus === 'recording';
   const isStoppingRecording = recordingStatus === 'stopping';
 
-  // Scroll to bottom helper with proper timing (inverted list scrolls to index 0)
-  const scrollToBottomSmooth = useCallback((animated: boolean = true) => {
-    setTimeout(() => {
-      if (conversation.length > 0) {
-        flatListRef.current?.scrollToIndex({ index: 0, animated });
-      }
-    }, 100);
-  }, [conversation.length]);
-
-  // Update a message or add it to the conversation
   const upsertMessage = useCallback((incoming: ApiMessage) => {
     setConversation((prev) => {
       const index = prev.findIndex((item) => item.id === incoming.id);
       if (index >= 0) {
-        // Update existing message
         const next = [...prev];
         next[index] = incoming;
         return next;
       }
-      // Add new message and sort by createdAt DESCENDING (newest first)
-      // This is reversed because FlatList is inverted
-      const updated = [...prev, incoming];
-      return updated.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      // Scroll to bottom when new message is added
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      return [...prev, incoming];
     });
-  }, []);
-
-  // Handle pending message update when server confirms
-  const handlePendingMessageUpdate = useCallback((tempId: string, serverId: string) => {
-    console.log('[ChatRoom] Updating pending message:', tempId, '->', serverId);
-    setConversation((prev) =>
-      prev.map((msg) => (msg.id && msg.id === tempId ? { ...msg, id: serverId } : msg))
-    );
   }, []);
 
   const handleIncomingMessage = useCallback(
     (message: ApiMessage) => {
-      console.log('[ChatRoom] Incoming message:', message.id);
       upsertMessage(message);
     },
     [upsertMessage]
   );
 
-  const { status: socketStatus, error: socketError, sendPendingMessage } = useChatSocket(chatId, {
+  const { status: socketStatus, error: socketError } = useChatSocket(chatId, {
     enabled: Boolean(token),
     onMessage: handleIncomingMessage,
-    onPendingMessageUpdate: handlePendingMessageUpdate,
   });
 
   const addAttachment = useCallback((attachment: MessageAttachment) => {
@@ -152,46 +118,11 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     setPendingAttachments((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   }, []);
 
-  // Load initial messages from API
   useEffect(() => {
     if (remoteMessages) {
-      console.log('[ChatRoom] Raw messages from API:', remoteMessages.length);
-      remoteMessages.forEach((msg, idx) => {
-        console.log(`[${idx}] ${msg.createdAt} - ${msg.content?.substring(0, 20)}`);
-      });
-      
-      // Sort messages by createdAt DESCENDING (newest first, oldest last)
-      // This is reversed because FlatList is inverted
-      const sorted = [...remoteMessages].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      
-      console.log('[ChatRoom] Sorted messages (reversed for inverted list):', sorted.length);
-      sorted.forEach((msg, idx) => {
-        console.log(`[${idx}] ${msg.createdAt} - ${msg.content?.substring(0, 20)}`);
-      });
-      
-      setConversation(sorted);
-      isInitialLoadRef.current = true;
+      setConversation(remoteMessages);
     }
   }, [remoteMessages]);
-
-  // Auto-scroll to bottom when conversation changes
-  useEffect(() => {
-    if (conversation.length === 0) return;
-
-    // On initial load, scroll without animation
-    if (isInitialLoadRef.current) {
-      scrollToBottomSmooth(false);
-      isInitialLoadRef.current = false;
-      return;
-    }
-
-    // For new messages, only scroll if user is near bottom
-    if (isNearBottomRef.current) {
-      scrollToBottomSmooth(true);
-    }
-  }, [conversation, scrollToBottomSmooth]);
 
   const handleSelectImageFromLibrary = useCallback(async () => {
     if (!token) {
@@ -222,7 +153,6 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     });
   }, [addAttachment, imagePickerError, pickImage, resetImageError, token]);
 
-  /* Camera capture functionality - reserved for future use
   const handleCaptureImage = useCallback(async () => {
     if (!token) {
       return;
@@ -251,7 +181,6 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
       },
     });
   }, [addAttachment, captureImage, imagePickerError, resetImageError, token]);
-  */
 
   const handleToggleRecording = useCallback(async () => {
     if (!token) {
@@ -291,7 +220,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
 
   const handleSend = async () => {
     const trimmed = draft.trim();
-    if (!token || !user) {
+    if (!token) {
       return;
     }
 
@@ -302,43 +231,6 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
       return;
     }
 
-    // If socket is disconnected or reconnecting, queue the message locally
-    if (socketStatus === 'disconnected' || socketStatus === 'reconnecting' || socketStatus === 'error') {
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const pendingMsg: ApiMessage = {
-        id: tempId,
-        chatId,
-        sender: user,
-        content: trimmed,
-        attachments: hasAttachments ? pendingAttachments : [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Add to conversation immediately with pending status
-      setConversation((prev) => {
-        const updated = [...prev, pendingMsg];
-        // Sort DESCENDING (newest first) because FlatList is inverted
-        return updated.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      });
-
-      // Queue for sending when socket reconnects
-      sendPendingMessage({
-        tempId,
-        chatId,
-        content: hasText ? trimmed : undefined,
-        attachments: hasAttachments ? pendingAttachments : undefined,
-        createdAt: new Date().toISOString(),
-      });
-
-      setDraft('');
-      setPendingAttachments([]);
-      return;
-    }
-
-    // Socket is connected, send normally via REST API
     try {
       const message = await sendMessage({
         chatId,
@@ -352,19 +244,6 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
       // Error already captured by the mutation hook; no further handling required.
     }
   };
-
-  const scrollToBottom = useCallback(() => {
-    scrollToBottomSmooth(true);
-    isNearBottomRef.current = true; // Reset tracking
-  }, [scrollToBottomSmooth]);
-
-  const handleScroll = useCallback((event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    
-    // For inverted FlatList, being at bottom means offsetY is close to 0
-    isNearBottomRef.current = offsetY < 100;
-    setShowScrollButton(offsetY > 200);
-  }, []);
 
   const handleDraftChange = (value: string) => {
     if (sendError) {
@@ -421,7 +300,6 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     token,
   ]);
 
-  /* Helper functions - reserved for future use
   const resolveSenderLabel = (message: ApiMessage) => {
     const senderId =
       typeof message.sender === 'string'
@@ -442,9 +320,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
   const isComposerDisabled = !token || isSending || isStoppingRecording;
   const disableMediaActions =
     !token || isSending || isPickingImage || isStoppingRecording || isRecording;
-  */
 
-  /* Socket status message - reserved for future use
   const socketStatusMessage = useMemo(() => {
     if (!token) {
       return null;
@@ -460,7 +336,6 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     }
     return null;
   }, [socketError, socketStatus, token]);
-  */
 
   const renderPendingAttachment = useCallback(
     (attachment: MessageAttachment) => {
@@ -476,12 +351,12 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
             style={[
               styles.audioAttachment,
               {
-                borderColor: theme.dark ? 'rgba(255, 255, 255, 0.12)' : theme.colors.surfaceVariant,
-                backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : theme.colors.secondaryContainer,
+                borderColor: theme.colors.surfaceVariant,
+                backgroundColor: theme.colors.secondaryContainer,
               },
             ]}
           >
-            <Text variant="labelSmall" style={{ color: theme.dark ? '#5E97F6' : theme.colors.primary }}>
+            <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
               Pending audio
             </Text>
             {formatted ? (
@@ -507,7 +382,6 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     ]
   );
 
-  /* Message attachment renderer - reserved for future use
   const renderMessageAttachment = useCallback(
     (attachment: MessageAttachment) => {
       if (attachment.kind === 'image') {
@@ -552,13 +426,12 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
       theme.colors.surfaceVariant,
     ]
   );
-  */
 
   const listFooterComponent = useMemo(() => {
     return (
       <View>
         {/* Typing Indicator */}
-        {isTyping && <TypingIndicator names={['Someone']} />}
+        {isTyping && <TypingIndicator />}
 
         {/* Pending Attachments */}
         {pendingAttachments.length > 0 && (
@@ -570,8 +443,8 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
                 style={[
                   styles.pendingAttachmentCard,
                   {
-                    borderColor: theme.dark ? 'rgba(255, 255, 255, 0.12)' : theme.colors.outlineVariant,
-                    backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: theme.colors.outlineVariant,
+                    backgroundColor: theme.colors.surface,
                   },
                 ]}
               >
@@ -591,87 +464,31 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     );
   }, [isTyping, pendingAttachments, theme.colors, renderPendingAttachment, removeAttachment]);
 
-  // Get gradient colors for avatar based on name
-  const gradientColors = useMemo(() => {
-    const gradients = [
-      ['#667eea', '#764ba2'],
-      ['#f093fb', '#f5576c'],
-      ['#4facfe', '#00f2fe'],
-      ['#43e97b', '#38f9d7'],
-      ['#fa709a', '#fee140'],
-      ['#30cfd0', '#330867'],
-      ['#a8edea', '#fed6e3'],
-      ['#ff9a9e', '#fecfef'],
-    ];
-    const index = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradients.length;
-    return gradients[index];
-  }, [title]);
-
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={['top']}
+      edges={['top', 'left', 'right']}
     >
-      {/* Modern Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.headerLeft}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-          >
-            <IconButton icon="arrow-left" size={24} iconColor={theme.colors.onBackground} style={{ margin: 0 }} />
-          </Pressable>
-          <Avatar.Text
-            size={40}
-            label={title.slice(0, 2).toUpperCase()}
-            style={{ backgroundColor: gradientColors[0] }}
-            labelStyle={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}
-          />
-          <View style={styles.headerTitleContainer}>
-            <Text variant="titleMedium" style={{ color: theme.colors.onBackground, fontWeight: '700', fontSize: 18 }}>
-              {title}
-            </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
-              {socketStatus === 'connected' ? 'online' : 'offline'}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.headerRight}>
-          <IconButton icon="video-outline" size={24} iconColor={theme.dark ? '#5E97F6' : theme.colors.primary} style={{ margin: 0 }} />
-          <IconButton icon="phone-outline" size={24} iconColor={theme.dark ? '#66BB6A' : theme.colors.primary} style={{ margin: 0 }} />
-          <IconButton icon="dots-vertical" size={24} iconColor={theme.colors.onBackground} style={{ margin: 0 }} />
-        </View>
-      </View>
-
-      {/* Reconnection status banner */}
-      {(socketStatus === 'reconnecting' || socketStatus === 'disconnected' || socketStatus === 'error') && (
-        <View style={[styles.reconnectionBanner, { backgroundColor: theme.dark ? 'rgba(239, 83, 80, 0.15)' : theme.colors.errorContainer }]}>
-          <ActivityIndicator size="small" color={theme.dark ? '#EF5350' : theme.colors.error} />
-          <Text style={[styles.reconnectionText, { color: theme.dark ? '#EF5350' : theme.colors.error }]}>
-            {socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected. Retrying...'}
-          </Text>
-        </View>
-      )}
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
+        <Text
+          variant="headlineSmall"
+          style={{ color: theme.colors.onBackground, marginBottom: 16 }}
+        >
+          {title}
+        </Text>
         <FlatList
           ref={flatListRef}
           data={conversation}
-          keyExtractor={(item, index) => item.id || `message-${index}`}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={listEmptyComponent}
-          ListHeaderComponent={listFooterComponent}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          inverted={true}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-            autoscrollToTopThreshold: 10,
-          }}
+          ListFooterComponent={listFooterComponent}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item, index }) => {
             const senderId =
               typeof item.sender === 'string'
@@ -679,46 +496,131 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
                 : item.sender?.id || (item.sender as any)?._id?.toString();
 
             const isSentByMe = senderId === user?.id;
-            const isPending = item.id?.startsWith('temp_') ?? false;
-            const senderName =
-              !isSentByMe && typeof item.sender === 'object' ? item.sender.name : undefined;
 
             return (
-              <ChatBubble
-                message={item}
-                isMine={isSentByMe}
-                isPending={isPending}
-                senderName={senderName}
-                index={index}
-                onLongPress={() => {
-                  // TODO: Show context menu for copy/delete/react
+              <MotiView
+                from={{ opacity: 0, translateY: 10 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{
+                  type: 'timing',
+                  duration: 200,
+                  delay: index < 5 ? index * 30 : 0,
                 }}
-              />
+              >
+                <Surface
+                  elevation={1}
+                  style={[
+                    styles.messageBubble,
+                    {
+                      backgroundColor: isSentByMe ? theme.colors.primaryContainer : '#93BFC7', // Soft blue for received messages
+                      borderColor: isSentByMe ? theme.colors.primaryContainer : '#93BFC7',
+                      alignSelf: isSentByMe ? 'flex-end' : 'flex-start',
+                    },
+                    shadows.sm,
+                  ]}
+                >
+                  {!isSentByMe && (
+                    <Text
+                      variant="labelMedium"
+                      style={{
+                        color: theme.dark ? '#1C1C1C' : '#333333',
+                        fontWeight: '600',
+                        marginBottom: spacing.xs,
+                      }}
+                    >
+                      {resolveSenderLabel(item)}
+                    </Text>
+                  )}
+                  {item.content ? (
+                    <Text
+                      variant="bodyMedium"
+                      style={{
+                        color: theme.dark ? '#1C1C1C' : '#333333',
+                        lineHeight: 20,
+                      }}
+                    >
+                      {item.content}
+                    </Text>
+                  ) : null}
+                  {item.attachments?.length ? (
+                    <View style={styles.messageAttachments}>
+                      {item.attachments.map((attachment: any, index: number) => (
+                        <View
+                          key={`${attachment.url}-${index}`}
+                          style={styles.messageAttachmentWrapper}
+                        >
+                          {renderMessageAttachment(attachment)}
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                  {item.createdAt && (
+                    <Text
+                      variant="labelSmall"
+                      style={{
+                        color: theme.dark ? 'rgba(28, 28, 28, 0.6)' : 'rgba(51, 51, 51, 0.6)',
+                        marginTop: spacing.xs,
+                        alignSelf: 'flex-end',
+                        fontSize: 11,
+                      }}
+                    >
+                      {new Date(item.createdAt).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
+                    </Text>
+                  )}
+                </Surface>
+              </MotiView>
             );
           }}
         />
 
-        {/* Scroll to bottom button */}
-        <ScrollToBottomButton visible={showScrollButton} onPress={scrollToBottom} />
-
-        {/* Input toolbar */}
-        <InputToolbar
-          draft={draft}
-          onChangeDraft={handleDraftChange}
-          onSend={handleSend}
-          isLoading={isSending}
-          pendingAttachments={pendingAttachments}
-          onRemoveAttachment={(index) => {
-            setPendingAttachments((prev) => prev.filter((_, i) => i !== index));
-          }}
-          onPickImage={handleSelectImageFromLibrary}
-          onRecordAudio={handleToggleRecording}
-          isRecording={isRecording}
-          isStoppingRecording={isStoppingRecording}
-          disabled={!token}
-        />
-
-        {/* Error messages */}
+        <Surface
+          style={[styles.composer, { borderColor: theme.colors.surfaceVariant }]}
+          elevation={1}
+        >
+          <View style={styles.mediaActions}>
+            <IconButton
+              icon="paperclip"
+              onPress={handleSelectImageFromLibrary}
+              accessibilityLabel="Attach image from library"
+              disabled={disableMediaActions}
+              loading={isPickingImage}
+            />
+            <IconButton
+              icon="camera"
+              onPress={handleCaptureImage}
+              accessibilityLabel="Capture image"
+              disabled={disableMediaActions}
+            />
+            <IconButton
+              icon={isRecording ? 'microphone-off' : 'microphone'}
+              onPress={handleToggleRecording}
+              accessibilityLabel={isRecording ? 'Stop recording audio' : 'Record audio message'}
+              disabled={disableMediaActions && !isRecording}
+              selected={isRecording}
+              loading={isStoppingRecording}
+            />
+          </View>
+          <TextInput
+            value={draft}
+            onChangeText={handleDraftChange}
+            placeholder="Message"
+            multiline
+            mode="flat"
+            style={styles.composerInput}
+            editable={!isComposerDisabled}
+          />
+          <IconButton
+            icon="send"
+            onPress={handleSend}
+            accessibilityLabel="Send message"
+            disabled={(!hasDraftContent && !hasPendingAttachments) || isComposerDisabled}
+            loading={isSending}
+          />
+        </Surface>
         {imagePickerError && (
           <HelperText type="error" visible={Boolean(imagePickerError)}>
             {imagePickerError.message}
@@ -729,9 +631,19 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
             {audioRecorderError.message}
           </HelperText>
         )}
+        {isRecording && (
+          <HelperText type="info" visible={isRecording}>
+            Recording… tap the microphone to stop.
+          </HelperText>
+        )}
         {sendError && (
           <HelperText type="error" visible={Boolean(sendError)}>
             {sendError.message}
+          </HelperText>
+        )}
+        {socketStatusMessage && (
+          <HelperText type="info" visible={Boolean(socketStatusMessage)}>
+            {socketStatusMessage}
           </HelperText>
         )}
         {socketError && (
@@ -749,44 +661,11 @@ export default ChatRoomScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reconnectionBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  reconnectionText: {
-    fontSize: 13,
-    fontWeight: '500',
+    paddingHorizontal: 24,
   },
   listContent: {
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingBottom: 16,
-    paddingTop: 8,
+    gap: 12,
+    paddingBottom: 20,
   },
   messageBubble: {
     padding: spacing.md,

@@ -1,18 +1,20 @@
 import type { NavigationProp } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
+import { MotiView } from 'moti';
 import React, { useCallback, useMemo } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import {
-    ActivityIndicator,
-    Avatar,
-    Button,
-    HelperText,
-    Text,
-    useTheme,
+  ActivityIndicator,
+  Avatar,
+  Button,
+  HelperText,
+  IconButton,
+  Surface,
+  Text,
+  useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import ContactListItem from '@/components/ContactListItem';
 import { useFriendsList } from '@/hooks/useFriends';
 import { useSession } from '@/hooks/useSession';
 import type { FriendProfile } from '@/lib/api/types';
@@ -22,7 +24,7 @@ import type { AppTabsScreenProps, RootStackParamList } from '@/types/navigation'
 const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) => {
   const theme = useTheme();
   const { token, user } = useSession();
-  const { data: friends, loading, error, refetch, isStale } = useFriendsList({ enabled: Boolean(token) });
+  const { data: friends, loading, error, refetch } = useFriendsList({ enabled: Boolean(token) });
 
   useFocusEffect(
     useCallback(() => {
@@ -60,21 +62,96 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: FriendProfile }) => (
-      <ContactListItem
-        title={item.name || item.email}
-        subtitle={item.email}
-        avatarLabel={(item.name || item.email).slice(0, 2).toUpperCase()}
-        onPress={() => handleChatNow(item.id, item.name || item.email)}
-      />
+    ({ item, index }: { item: FriendProfile; index: number }) => (
+      <MotiView
+        from={{ opacity: 0, translateX: -20 }}
+        animate={{ opacity: 1, translateX: 0 }}
+        transition={{
+          type: 'timing',
+          duration: 300,
+          delay: index * 50,
+        }}
+      >
+        <Surface
+          elevation={0}
+          style={[
+            styles.friendItem,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}
+        >
+          <Avatar.Text
+            label={(item.name || item.email).slice(0, 2).toUpperCase()}
+            size={52}
+            style={{ backgroundColor: theme.colors.primaryContainer }}
+            labelStyle={{
+              color: theme.colors.onPrimaryContainer,
+              fontWeight: '600',
+            }}
+          />
+          <View style={styles.friendInfo}>
+            <Text
+              variant="titleMedium"
+              style={{
+                color: theme.colors.onSurface,
+                fontWeight: '600',
+              }}
+              numberOfLines={1}
+            >
+              {item.name || item.email}
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{
+                color: theme.colors.onSurfaceVariant,
+                marginTop: spacing.xs,
+              }}
+              numberOfLines={1}
+            >
+              {item.email}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => handleChatNow(item.id, item.name || item.email)}
+            style={({ pressed }) => [
+              {
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Surface
+              elevation={1}
+              style={[styles.chatButton, { backgroundColor: theme.colors.primaryContainer }]}
+            >
+              <IconButton
+                icon="chat"
+                size={20}
+                iconColor={theme.colors.onPrimaryContainer}
+                style={{ margin: 0 }}
+              />
+            </Surface>
+          </Pressable>
+        </Surface>
+      </MotiView>
     ),
-    [handleChatNow]
+    [handleChatNow, theme.colors]
   );
 
   const listEmptyComponent = useMemo(() => {
     if (!token) {
       return (
-        <View style={styles.emptyStateContainer}>
+        <Surface
+          elevation={0}
+          style={[
+            styles.emptyState,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}
+        >
           <Text
             variant="bodyLarge"
             style={{
@@ -84,46 +161,69 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
           >
             Sign in to view your friends.
           </Text>
-        </View>
+        </Surface>
       );
     }
 
     if (loading) {
       return (
-        <View style={styles.emptyStateContainer}>
+        <Surface
+          elevation={0}
+          style={[
+            styles.emptyState,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}
+        >
           <ActivityIndicator animating size="large" color={theme.colors.primary} />
-        </View>
+        </Surface>
       );
     }
 
     if (error) {
       return (
-        <View style={styles.emptyStateContainer}>
+        <Surface
+          elevation={0}
+          style={[
+            styles.emptyState,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}
+        >
           <HelperText type="error" visible>
             {error.message}
           </HelperText>
-          <Button
-            mode="contained"
-            onPress={refetch}
-            style={{ marginTop: spacing.md, backgroundColor: theme.colors.primary }}
-          >
+          <Button mode="contained" onPress={refetch} style={{ marginTop: spacing.md }}>
             Retry
           </Button>
-        </View>
+        </Surface>
       );
     }
 
     return (
-      <View style={styles.emptyStateContainer}>
+      <Surface
+        elevation={0}
+        style={[
+          styles.emptyState,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.outlineVariant,
+          },
+        ]}
+      >
         <Text
           variant="headlineSmall"
           style={{
             color: theme.colors.onSurface,
             textAlign: 'center',
-            fontWeight: '700',
+            fontWeight: '600',
           }}
         >
-          No Friends Yet
+          No friends yet
         </Text>
         <Text
           variant="bodyMedium"
@@ -131,158 +231,45 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
             color: theme.colors.onSurfaceVariant,
             textAlign: 'center',
             marginTop: spacing.sm,
-            marginBottom: spacing.lg,
           }}
         >
-          Add friends to start chatting
+          Use the button above to find friends
         </Text>
-        <Button
-          mode="contained"
-          onPress={handleAddFriend}
-          style={{ backgroundColor: theme.colors.primary, borderRadius: borderRadius.sm }}
-          labelStyle={{ fontSize: 14, fontWeight: '600' }}
-        >
-          Add Friends
-        </Button>
-      </View>
+      </Surface>
     );
-  }, [error, handleAddFriend, loading, refetch, theme.colors, token]);
+  }, [error, loading, refetch, theme.colors, token]);
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top', 'left', 'right']}
     >
-      {/* Instagram-style Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.background,
-            borderBottomColor: theme.colors.outline,
-          },
-        ]}
-      >
-        <View style={styles.headerContent}>
-          <Text
-            variant="titleLarge"
-            style={{
-              color: theme.colors.onBackground,
-              fontWeight: '700',
-              fontSize: 24,
-            }}
-          >
-            FriendlyChat
-          </Text>
-          {isStale && (
-            <ActivityIndicator
-              size="small"
-              color={theme.colors.primary}
-              style={{ marginLeft: spacing.sm }}
-            />
-          )}
-        </View>
-      </View>
+      <Surface elevation={1} style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+        <Text
+          variant="titleLarge"
+          style={{
+            color: theme.colors.onSurface,
+            fontWeight: '600',
+          }}
+        >
+          My Friends
+        </Text>
+        <Button
+          mode="contained"
+          onPress={handleAddFriend}
+          icon="account-plus"
+          contentStyle={{ paddingVertical: spacing.xs }}
+        >
+          Add Friend
+        </Button>
+      </Surface>
 
-      {/* Story-style Your Story Section */}
-      <View
-        style={[
-          styles.storiesSection,
-          { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.outline },
-        ]}
-      >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storiesContent}>
-          {/* Your Story */}
-          <Pressable style={styles.storyItem}>
-            <View
-              style={[
-                styles.storyCircle,
-                {
-                  backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                  borderColor: theme.colors.outline,
-                },
-              ]}
-            >
-              <Avatar.Text
-                size={64}
-                label={user?.name?.slice(0, 2).toUpperCase() || 'U'}
-                style={{ backgroundColor: theme.colors.primaryContainer }}
-                labelStyle={{ color: theme.colors.onPrimaryContainer, fontSize: 24 }}
-              />
-              <View style={[styles.addStoryBadge, { backgroundColor: theme.colors.primary, borderColor: theme.colors.background }]}>
-                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>+</Text>
-              </View>
-            </View>
-            <Text
-              variant="labelSmall"
-              style={{
-                color: theme.colors.onBackground,
-                marginTop: spacing.xs,
-                textAlign: 'center',
-              }}
-            >
-              Your story
-            </Text>
-          </Pressable>
-
-          {/* Sample friend stories (placeholder) */}
-          {friendList.slice(0, 5).map((friend, index) => (
-            <Pressable key={friend.id} style={styles.storyItem}>
-              <View
-                style={[
-                  styles.storyCircle,
-                  {
-                    borderColor: theme.colors.primary,
-                    borderWidth: 2,
-                  },
-                ]}
-              >
-                <Avatar.Text
-                  size={64}
-                  label={(friend.name || friend.email).slice(0, 2).toUpperCase()}
-                  style={{ backgroundColor: theme.colors.secondaryContainer }}
-                  labelStyle={{ color: theme.colors.onSecondaryContainer, fontSize: 24 }}
-                />
-              </View>
-              <Text
-                variant="labelSmall"
-                numberOfLines={1}
-                style={{
-                  color: theme.colors.onBackground,
-                  marginTop: spacing.xs,
-                  textAlign: 'center',
-                  maxWidth: 72,
-                }}
-              >
-                {(friend.name || friend.email).split(' ')[0]}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Friends List Header */}
-      {friendList.length > 0 && (
-        <View style={styles.sectionHeader}>
-          <Text
-            variant="titleSmall"
-            style={{
-              color: theme.colors.onBackground,
-              fontWeight: '700',
-            }}
-          >
-            All Friends
-          </Text>
-        </View>
-      )}
-
-      {/* Friends List */}
       <FlatList
         data={friendList}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         ListEmptyComponent={listEmptyComponent}
         refreshControl={
           <RefreshControl
@@ -314,55 +301,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
   },
-  headerContent: {
+  listContent: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  friendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  storiesSection: {
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-  },
-  storiesContent: {
-    paddingHorizontal: spacing.base,
+    borderRadius: borderRadius.lg,
     gap: spacing.md,
+    borderWidth: 1,
   },
-  storyItem: {
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  storyCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  addStoryBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-  },
-  sectionHeader: {
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.xs,
-    paddingBottom: 100, // Space for floating tab bar
-  },
-  emptyStateContainer: {
+  friendInfo: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  chatButton: {
+    borderRadius: borderRadius.full,
+    width: 44,
+    height: 44,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl * 2,
+    justifyContent: 'center',
+  },
+  emptyState: {
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginTop: spacing.xxl,
   },
 });

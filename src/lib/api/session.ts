@@ -1,7 +1,6 @@
 import { setAccessToken } from './client';
 
 import { disconnectSocket } from '@/lib/socket/client';
-import { clearChatCache, clearFriendsCache } from '@/lib/storage';
 import type { ApiUser, AuthResponse } from './types';
 
 type SessionListener = (session: AuthSession) => void;
@@ -51,14 +50,5 @@ export function clearSession(): void {
   };
   setAccessToken(null);
   disconnectSocket();
-  
-  // Clear all cached data on logout
-  Promise.all([
-    clearChatCache(),
-    clearFriendsCache(),
-  ]).catch((error) => {
-    console.error('[Session] Error clearing caches:', error);
-  });
-  
   emitChange();
 }

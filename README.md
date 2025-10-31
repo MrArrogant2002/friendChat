@@ -215,18 +215,17 @@ cd server
 vercel --prod
 ```
 
-**Socket.IO Server (Render):**
+**Socket.IO Server (Railway):**
 
-- Deploy from GitHub at https://render.com
+- Deploy from GitHub at https://railway.app
 - Root directory: `server`
 - Start command: `node socket-server.js`
-- Uses `render.yaml` for configuration
 - See [docs/SOCKET_DEPLOYMENT.md](docs/SOCKET_DEPLOYMENT.md)
 
 **Environment Variables:**
 
 - Vercel: `MONGO_URI`, `JWT_SECRET`, `CLOUDINARY_URL`
-- Render: `JWT_SECRET`, `ALLOWED_ORIGINS`, `PORT`
+- Railway: `JWT_SECRET`, `ALLOWED_ORIGINS`, `PORT`
 
 **Mobile App (EAS Build):**
 

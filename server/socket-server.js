@@ -1,7 +1,7 @@
 /**
  * Standalone Socket.IO Server
  * This server handles real-time WebSocket connections separately from the Next.js API
- * Deploy this to Render, Railway, or any Node.js hosting platform
+ * Deploy this to Railway, Render, or any Node.js hosting platform
  */
 require('dotenv').config();
 const { createServer } = require('http');
@@ -43,9 +43,8 @@ const io = new Server(httpServer, {
     credentials: true,
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 10000, // Reduced from 60000ms to 10 seconds for faster timeout detection
-  pingInterval: 5000, // Reduced from 25000ms to 5 seconds for more frequent health checks
-  connectTimeout: 10000, // 10 seconds timeout for initial connection
+  pingTimeout: 60000,
+  pingInterval: 25000,
   allowEIO3: true, // Allow Engine.IO v3 clients
 });
 

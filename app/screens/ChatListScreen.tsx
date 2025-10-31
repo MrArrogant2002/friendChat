@@ -1,26 +1,24 @@
-import ContactListItem from '@/components/ContactListItem';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MotiView } from 'moti';
 import React, { useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, Image as RNImage, StyleSheet, View } from 'react-native';
 import {
-    FlatList,
-    StyleSheet,
-    View
-} from 'react-native';
-import {
-    ActivityIndicator,
-    Button,
-    Searchbar,
-    Text,
-    useTheme
+  ActivityIndicator,
+  Avatar,
+  Button,
+  Searchbar,
+  Surface,
+  Text,
+  useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useChatRoomsQuery } from '@/hooks/useChatApi';
 import { useFriendsList } from '@/hooks/useFriends';
 import { useSession } from '@/hooks/useSession';
-import { borderRadius, spacing } from '@/theme';
+import { borderRadius, shadows, spacing } from '@/theme';
 import type { AppTabsParamList, AppTabsScreenProps, RootStackParamList } from '@/types/navigation';
 
 function getInitials(label: string): string {
@@ -49,7 +47,6 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
     loading: isLoadingRooms,
     error: roomsError,
     refetch: refetchRooms,
-    isStale,
   } = useChatRoomsQuery({ enabled: Boolean(token) });
   const { data: friends } = useFriendsList({ enabled: Boolean(token) });
 
@@ -115,167 +112,223 @@ const ChatListScreen: React.FC<AppTabsScreenProps<'ChatList'>> = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top', 'left', 'right']}
     >
-      {/* Instagram-style Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.background,
-            borderBottomColor: theme.colors.outline,
-          },
-        ]}
-      >
+      {/* Modern header */}
+      <Surface elevation={1} style={[styles.header, { backgroundColor: theme.colors.surface }]}>
         <View style={styles.headerContent}>
-          <View style={styles.appNameContainer}>
-            <Text
-              variant="titleLarge"
-              style={{
-                color: theme.colors.onBackground,
-                fontWeight: '700',
-                fontSize: 24,
-              }}
-            >
-              FriendlyChat
-            </Text>
-            {isStale && (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.primary}
-                style={{ marginLeft: spacing.sm }}
-              />
-            )}
-          </View>
+          <RNImage
+            source={require('../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text
+            variant="titleLarge"
+            style={{
+              color: theme.colors.onSurface,
+              fontWeight: '600',
+              marginLeft: spacing.sm,
+            }}
+          >
+            FriendlyChart
+          </Text>
         </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search"
-          value={query}
-          onChangeText={setQuery}
-          style={[
-            styles.searchBar,
-            {
-              backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-            },
-          ]}
-          inputStyle={{
-            fontSize: 15,
-            color: theme.colors.onBackground,
-            minHeight: 0,
-            paddingVertical: 0,
-          }}
-          placeholderTextColor={theme.colors.onSurfaceVariant}
-          iconColor={theme.colors.onSurfaceVariant}
-          elevation={0}
-          clearIcon="close-circle"
-        />
-      </View>
-
-      {/* Chat List */}
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => tabNavigation.navigate('Profile')}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Avatar.Text
+              size={40}
+              label={userInitials}
+              style={{ backgroundColor: theme.colors.primaryContainer }}
+              labelStyle={{
+                color: theme.colors.onPrimaryContainer,
+                fontWeight: '600',
+              }}
+            />
+          </Pressable>
+        </View>
+      </Surface>
+      <Searchbar
+        placeholder="Search chats"
+        value={query}
+        onChangeText={setQuery}
+        style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}
+        inputStyle={{ fontSize: 14 }}
+        iconColor={theme.colors.primary}
+        elevation={0}
+      />{' '}
       <FlatList
         data={filteredChats}
-        keyExtractor={(item: any) => item.id}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }: { item: any }) => {
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+        renderItem={({ item, index }) => {
           const displayTitle = getChatTitle(item.title, item.id);
 
           return (
-            <ContactListItem
-              title={displayTitle}
-              subtitle={
-                item.lastMessage
-                  ? item.lastMessage.content || 'Sent an attachment'
-                  : 'Tap to start chatting'
-              }
-              avatarLabel={getInitials(displayTitle)}
-              timestamp={
-                item.lastMessage?.createdAt
-                  ? new Date(item.lastMessage.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                  : undefined
-              }
-              unreadCount={item.unreadCount}
-              onPress={() =>
-                rootNavigation.navigate('ChatRoom', {
-                  chatId: item.id,
-                  title: displayTitle,
-                })
-              }
-            />
+            <MotiView
+              from={{ opacity: 0, translateY: 20 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{
+                type: 'timing',
+                duration: 300,
+                delay: index * 50,
+              }}
+            >
+              <Pressable
+                onPress={() =>
+                  rootNavigation.navigate('ChatRoom', {
+                    chatId: item.id,
+                    title: displayTitle,
+                  })
+                }
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Surface
+                  elevation={0}
+                  style={[
+                    styles.chatItem,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                  ]}
+                >
+                  <Avatar.Text
+                    label={getInitials(displayTitle)}
+                    size={48}
+                    style={{ backgroundColor: theme.colors.primaryContainer }}
+                    labelStyle={{
+                      color: theme.colors.onPrimaryContainer,
+                      fontWeight: '600',
+                    }}
+                  />
+                  <View style={styles.chatContent}>
+                    <View style={styles.chatHeader}>
+                      <Text
+                        variant="titleMedium"
+                        style={{
+                          color: theme.colors.onSurface,
+                          fontWeight: '600',
+                          flex: 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {displayTitle}
+                      </Text>
+                      {item.unreadCount > 0 && (
+                        <Surface
+                          style={[styles.unreadBadge, { backgroundColor: theme.colors.primary }]}
+                          elevation={1}
+                        >
+                          <Text
+                            variant="labelSmall"
+                            style={{
+                              color: theme.colors.surface,
+                              fontWeight: '600',
+                            }}
+                          >
+                            {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                          </Text>
+                        </Surface>
+                      )}
+                    </View>
+                    <Text
+                      variant="bodyMedium"
+                      style={{
+                        color: theme.colors.onSurfaceVariant,
+                        marginTop: spacing.xs,
+                      }}
+                      numberOfLines={2}
+                    >
+                      {item.lastMessage
+                        ? `${item.lastMessage.senderName ?? 'Participant'}: ${item.lastMessage.content || 'Attachment'}`
+                        : 'No messages yet'}
+                    </Text>
+                  </View>
+                </Surface>
+              </Pressable>
+            </MotiView>
           );
         }}
         ListEmptyComponent={
-          <View style={styles.emptyStateContainer}>
-            {!token ? (
-              <Text
-                variant="bodyLarge"
-                style={{
-                  color: theme.colors.onSurfaceVariant,
-                  textAlign: 'center',
-                }}
-              >
-                Sign in to load your conversations.
-              </Text>
-            ) : isLoadingRooms ? (
-              <ActivityIndicator animating size="large" color={theme.colors.primary} />
-            ) : roomsError ? (
-              <View style={styles.emptyStateContent}>
+          <MotiView
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'timing', duration: 400 }}
+          >
+            <Surface
+              style={[
+                styles.emptyState,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outlineVariant,
+                },
+              ]}
+              elevation={0}
+            >
+              {!token ? (
                 <Text
                   variant="bodyLarge"
                   style={{
-                    color: theme.colors.error,
-                    textAlign: 'center',
-                  }}
-                >
-                  {roomsError.message}
-                </Text>
-                <Button
-                  mode="contained"
-                  onPress={refetchRooms}
-                  style={{ marginTop: spacing.md, backgroundColor: theme.colors.primary }}
-                >
-                  Retry
-                </Button>
-              </View>
-            ) : (
-              <View style={styles.emptyStateContent}>
-                <Text
-                  variant="headlineSmall"
-                  style={{
-                    color: theme.colors.onSurface,
-                    textAlign: 'center',
-                    fontWeight: '700',
-                  }}
-                >
-                  No Messages
-                </Text>
-                <Text
-                  variant="bodyMedium"
-                  style={{
                     color: theme.colors.onSurfaceVariant,
                     textAlign: 'center',
-                    marginTop: spacing.sm,
-                    marginBottom: spacing.lg,
                   }}
                 >
-                  Send private messages to a friend
+                  Sign in to load your conversations.
                 </Text>
-                <Button
-                  mode="contained"
-                  onPress={() => rootNavigation.navigate('AddFriend')}
-                  style={{ backgroundColor: theme.colors.primary, borderRadius: borderRadius.sm }}
-                  labelStyle={{ fontSize: 14, fontWeight: '600' }}
-                >
-                  Send Message
-                </Button>
-              </View>
-            )}
-          </View>
+              ) : isLoadingRooms ? (
+                <ActivityIndicator animating size="large" color={theme.colors.primary} />
+              ) : roomsError ? (
+                <View style={styles.emptyStateContent}>
+                  <Text
+                    variant="bodyLarge"
+                    style={{
+                      color: theme.colors.error,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {roomsError.message}
+                  </Text>
+                  <Button mode="contained" onPress={refetchRooms} style={{ marginTop: spacing.md }}>
+                    Retry
+                  </Button>
+                </View>
+              ) : (
+                <View style={styles.emptyStateContent}>
+                  <Text
+                    variant="headlineSmall"
+                    style={{
+                      color: theme.colors.onSurface,
+                      textAlign: 'center',
+                      fontWeight: '600',
+                    }}
+                  >
+                    No conversations yet
+                  </Text>
+                  <Text
+                    variant="bodyMedium"
+                    style={{
+                      color: theme.colors.onSurfaceVariant,
+                      textAlign: 'center',
+                      marginTop: spacing.sm,
+                    }}
+                  >
+                    Start chatting with your friends
+                  </Text>
+                  <Button
+                    mode="contained"
+                    icon="account-plus"
+                    onPress={() => rootNavigation.navigate('AddFriend')}
+                    style={{ marginTop: spacing.lg }}
+                    contentStyle={{ paddingVertical: spacing.xs }}
+                  >
+                    Add Friends
+                  </Button>
+                </View>
+              )}
+            </Surface>
+          </MotiView>
         }
       />
     </SafeAreaView>
@@ -299,35 +352,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  appNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-  },
-  searchBar: {
-    borderRadius: borderRadius.md,
-    elevation: 0,
+  logo: {
+    width: 36,
     height: 36,
   },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.xs,
-    paddingBottom: 100, // Space for floating tab bar
-  },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  headerActions: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl * 2,
+    gap: spacing.sm,
+  },
+  searchBar: {
+    marginHorizontal: spacing.base,
+    marginVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+  },
+  listContent: {
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.xl,
+  },
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+  },
+  chatContent: {
+    flex: 1,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  unreadBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyState: {
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginTop: spacing.xxl,
   },
   emptyStateContent: {
     alignItems: 'center',
-    maxWidth: 280,
   },
 });

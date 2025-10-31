@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
-  NavigationContainer,
-  NavigationIndependentTree,
-  useNavigationContainerRef,
+    NavigationContainer,
+    NavigationIndependentTree,
+    useNavigationContainerRef,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
@@ -17,13 +17,13 @@ import { setUnauthorizedListener } from '@/lib/api/client';
 import { clearSession } from '@/lib/api/session';
 import { darkTheme, lightTheme, navigationDarkTheme, navigationLightTheme, spacing } from '@/theme';
 import type {
-  AppTabsParamList,
-  RootStackParamList
+    AppTabsParamList,
+    RootStackParamList
 } from '@/types/navigation';
 import AddFriendScreen from '../screens/AddFriendScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
-import FriendsScreen from '../screens/FriendsScreen';
+import FriendsScreenEnhanced from '../screens/FriendsScreenEnhanced';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -98,7 +98,7 @@ function AppTabs() {
       })}
     >
       <Tab.Screen name="ChatList" component={ChatListScreen} options={{ title: 'Chats' }} />
-      <Tab.Screen name="Friends" component={FriendsScreen} options={{ title: 'Friends' }} />
+      <Tab.Screen name="Friends" component={FriendsScreenEnhanced} options={{ title: 'Friends' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );

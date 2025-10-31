@@ -3,8 +3,6 @@
 # dependencies
 node_modules/
 server/node_modules/
-.pnp
-.pnp.js
 
 # Expo
 .expo/
@@ -22,7 +20,6 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 *.keystore
-!debug.keystore
 
 # Metro
 .metro-health-check*
@@ -32,7 +29,6 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 pnpm-debug.log*
-lerna-debug.log*
 
 # macOS
 .DS_Store
@@ -85,39 +81,18 @@ temp/
 app-example
 
 # generated native folders
-# Keep essential android config but ignore build artifacts
 /ios
-android/app/build/
-android/build/
-android/.gradle/
-android/app/release/
-android/.cxx/
+/android
 
 # Config files that may contain secrets
 google-services.json
-GoogleService-Info.plist
 
 # Generated files
 metro.config.js
 nativewind-env.d.ts
 package-lock.json
 yarn.lock
-pnpm-lock.yaml
 
 # Documentation builds
 docs/.vuepress/dist
 docs/.vitepress/dist
-
-# Audio recordings (if any test recordings)
-*.m4a
-*.aac
-*.mp3
-*.wav
-
-# Image cache
-.image-cache/
-
-# Misc
-*.bak
-*.orig
-.watchmanconfig

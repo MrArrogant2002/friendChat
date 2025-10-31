@@ -44,7 +44,7 @@ All major features and integrations have been implemented! The FriendChat app is
 - [x] Run ESLint/Prettier + TypeScript checks in CI/local scripts
 - [x] Replace lingering "Friendly Chart" references with updated product naming
 - [x] Clean up redundant documentation files
-- [x] Organize deployment configuration (Vercel + Render)
+- [x] Organize Railway deployment configuration
 
 ---
 

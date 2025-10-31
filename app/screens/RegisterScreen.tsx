@@ -1,26 +1,28 @@
 import * as Haptics from 'expo-haptics';
+import { MotiView } from 'moti';
 import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Image as RNImage,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { Button, Text, TextInput, useTheme } from 'react-native-paper';
+import { HelperText, IconButton, Surface, Text, TextInput, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRegisterMutation } from '@/hooks/useAuthApi';
-import { borderRadius, spacing } from '@/theme';
+import { borderRadius, shadows, spacing } from '@/theme';
 import type { AuthStackScreenProps } from '@/types/navigation';
 
 const RegisterScreen: React.FC<AuthStackScreenProps<'Register'>> = ({ navigation }) => {
   const theme = useTheme();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('Demo User');
+  const [email, setEmail] = useState('demo@friendly.chart');
+  const [password, setPassword] = useState('password');
+  const [confirmPassword, setConfirmPassword] = useState('password');
   const [submitted, setSubmitted] = useState(false);
   const [securePassword, setSecurePassword] = useState(true);
   const [secureConfirm, setSecureConfirm] = useState(true);
@@ -59,204 +61,310 @@ const RegisterScreen: React.FC<AuthStackScreenProps<'Register'>> = ({ navigation
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={['top', 'left', 'right', 'bottom']}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={['top', 'left', 'right']}
     >
       <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        behavior={Platform.select({ ios: 'padding', android: undefined })}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* FriendlyChat Logo */}
-          <View style={styles.logoContainer}>
-            {/* Emoji Logo */}
-            <View style={[styles.logoCircle, { backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', borderColor: theme.colors.primary }]}>
-              <Text style={styles.logoEmoji}>💬</Text>
-            </View>
-            <Text
-              style={[
-                styles.logoText,
-                {
-                  color: theme.colors.onBackground,
-                  fontFamily: Platform.select({
-                    ios: 'System',
-                    android: 'Roboto',
-                    default: 'sans-serif',
-                  }),
-                },
-              ]}
-            >
-              FriendlyChat
-            </Text>
-          </View>
-
-          <Text
-            variant="bodyMedium"
-            style={{
-              color: theme.colors.onSurfaceVariant,
-              textAlign: 'center',
-              marginBottom: spacing.xl,
-              paddingHorizontal: spacing.xl,
-            }}
+          <MotiView
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'timing', duration: 600 }}
+            style={styles.logoContainer}
           >
-            Sign up to chat and connect with your friends.
-          </Text>
-
-          {/* Sign Up Form */}
-          <View style={styles.formContainer}>
-            <TextInput
-              mode="outlined"
-              placeholder="Full name"
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={name}
-              onChangeText={handleFieldChange(setName)}
-              autoCapitalize="words"
-              style={[styles.input, { backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)' }]}
-              outlineStyle={{
-                borderColor: theme.colors.outline,
-                borderWidth: 1,
-                borderRadius: borderRadius.sm,
-              }}
-              textColor={theme.colors.onBackground}
-              error={errors.name}
-              dense
+            <RNImage
+              source={require('../../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
             />
-
-            <TextInput
-              mode="outlined"
-              placeholder="Email"
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={email}
-              onChangeText={handleFieldChange(setEmail)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={[styles.input, { backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)' }]}
-              outlineStyle={{
-                borderColor: theme.colors.outline,
-                borderWidth: 1,
-                borderRadius: borderRadius.sm,
-              }}
-              textColor={theme.colors.onBackground}
-              error={errors.email}
-              dense
-            />
-
-            <TextInput
-              mode="outlined"
-              placeholder="Password"
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={password}
-              onChangeText={handleFieldChange(setPassword)}
-              secureTextEntry={securePassword}
-              style={[styles.input, { backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)' }]}
-              outlineStyle={{
-                borderColor: theme.colors.outline,
-                borderWidth: 1,
-                borderRadius: borderRadius.sm,
-              }}
-              textColor={theme.colors.onBackground}
-              error={errors.password}
-              dense
-              right={
-                <TextInput.Icon
-                  icon={securePassword ? 'eye-off' : 'eye'}
-                  onPress={() => setSecurePassword(!securePassword)}
-                  forceTextInputFocus={false}
-                />
-              }
-            />
-
-            <TextInput
-              mode="outlined"
-              placeholder="Confirm password"
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={confirmPassword}
-              onChangeText={handleFieldChange(setConfirmPassword)}
-              secureTextEntry={secureConfirm}
-              style={[styles.input, { backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)' }]}
-              outlineStyle={{
-                borderColor: theme.colors.outline,
-                borderWidth: 1,
-                borderRadius: borderRadius.sm,
-              }}
-              textColor={theme.colors.onBackground}
-              error={errors.confirm}
-              dense
-              right={
-                <TextInput.Icon
-                  icon={secureConfirm ? 'eye-off' : 'eye'}
-                  onPress={() => setSecureConfirm(!secureConfirm)}
-                  forceTextInputFocus={false}
-                />
-              }
-              onSubmitEditing={handleRegister}
-              returnKeyType="go"
-            />
-
-            {/* Sign Up Button */}
-            <Button
-              mode="contained"
-              onPress={handleRegister}
-              loading={loading}
-              disabled={loading}
-              style={[styles.signUpButton, { backgroundColor: theme.colors.primary }]}
-              labelStyle={styles.signUpButtonText}
-              contentStyle={styles.buttonContent}
-            >
-              {loading ? 'Creating account...' : 'Sign up'}
-            </Button>
-
-            {/* Error Message */}
-            {error && (
-              <View style={styles.errorContainer}>
-                <Text variant="bodySmall" style={{ color: theme.colors.error, textAlign: 'center' }}>
-                  {error.message}
-                </Text>
-              </View>
-            )}
-
-            {/* Terms */}
             <Text
-              variant="labelSmall"
+              variant="displaySmall"
+              style={{
+                color: theme.colors.primary,
+                fontWeight: '700',
+                textAlign: 'center',
+              }}
+            >
+              FriendlyChart
+            </Text>
+            <Text
+              variant="bodyLarge"
               style={{
                 color: theme.colors.onSurfaceVariant,
                 textAlign: 'center',
-                marginTop: spacing.lg,
-                lineHeight: 16,
+                marginTop: spacing.sm,
               }}
             >
-              By signing up, you agree to our Terms, Data Policy and Cookies Policy.
+              Join the conversation
             </Text>
-          </View>
-        </ScrollView>
+          </MotiView>
 
-        {/* Bottom Section */}
-        <View
-          style={[
-            styles.bottomContainer,
-            { borderTopColor: theme.colors.outline, backgroundColor: theme.colors.background },
-          ]}
-        >
-          <View style={styles.loginContainer}>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              Have an account?{' '}
-            </Text>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate('Login');
-              }}
+          <MotiView
+            from={{ opacity: 0, translateY: 30 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 500, delay: 200 }}
+          >
+            <Surface
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outlineVariant,
+                },
+                shadows.lg,
+              ]}
+              elevation={2}
             >
-              <Text variant="bodyMedium" style={{ color: theme.colors.primary, fontWeight: '600' }}>
-                Log in.
+              <Text
+                variant="headlineMedium"
+                style={{
+                  color: theme.colors.onSurface,
+                  fontWeight: '600',
+                }}
+              >
+                Create account
               </Text>
-            </Pressable>
-          </View>
-        </View>
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  marginTop: spacing.xs,
+                  marginBottom: spacing.md,
+                  lineHeight: 22,
+                }}
+              >
+                Fill in your details to get started
+              </Text>
+
+              <View style={styles.fieldGroup}>
+                <TextInput
+                  label="Display name"
+                  value={name}
+                  onChangeText={handleFieldChange(setName)}
+                  autoCapitalize="words"
+                  mode="outlined"
+                  error={errors.name}
+                  left={<TextInput.Icon icon="account" />}
+                  style={{ backgroundColor: theme.colors.surface }}
+                  outlineColor={theme.colors.outlineVariant}
+                  activeOutlineColor={theme.colors.primary}
+                />
+                {errors.name && (
+                  <HelperText type="error" visible={errors.name}>
+                    Please provide your name
+                  </HelperText>
+                )}
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <TextInput
+                  label="Email"
+                  value={email}
+                  onChangeText={handleFieldChange(setEmail)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  mode="outlined"
+                  error={errors.email}
+                  left={<TextInput.Icon icon="email" />}
+                  style={{ backgroundColor: theme.colors.surface }}
+                  outlineColor={theme.colors.outlineVariant}
+                  activeOutlineColor={theme.colors.primary}
+                />
+                {errors.email && (
+                  <HelperText type="error" visible={errors.email}>
+                    Enter a valid email address
+                  </HelperText>
+                )}
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <TextInput
+                  label="Password"
+                  value={password}
+                  onChangeText={handleFieldChange(setPassword)}
+                  secureTextEntry={securePassword}
+                  mode="outlined"
+                  error={errors.password}
+                  left={<TextInput.Icon icon="lock" />}
+                  right={
+                    <TextInput.Icon
+                      icon={securePassword ? 'eye-off' : 'eye'}
+                      onPress={() => {
+                        setSecurePassword((prev) => !prev);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      forceTextInputFocus={false}
+                    />
+                  }
+                  style={{ backgroundColor: theme.colors.surface }}
+                  outlineColor={theme.colors.outlineVariant}
+                  activeOutlineColor={theme.colors.primary}
+                />
+                {errors.password && (
+                  <HelperText type="error" visible={errors.password}>
+                    Password must be at least 6 characters
+                  </HelperText>
+                )}
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <TextInput
+                  label="Confirm password"
+                  value={confirmPassword}
+                  onChangeText={handleFieldChange(setConfirmPassword)}
+                  secureTextEntry={secureConfirm}
+                  mode="outlined"
+                  error={errors.confirm}
+                  left={<TextInput.Icon icon="lock-check" />}
+                  right={
+                    <TextInput.Icon
+                      icon={secureConfirm ? 'eye-off' : 'eye'}
+                      onPress={() => {
+                        setSecureConfirm((prev) => !prev);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      forceTextInputFocus={false}
+                    />
+                  }
+                  style={{ backgroundColor: theme.colors.surface }}
+                  outlineColor={theme.colors.outlineVariant}
+                  activeOutlineColor={theme.colors.primary}
+                />
+                {errors.confirm && (
+                  <HelperText type="error" visible={errors.confirm}>
+                    Passwords must match
+                  </HelperText>
+                )}
+              </View>
+
+              <View style={{ marginTop: spacing.lg, width: '100%', alignItems: 'center' }}>
+                <Pressable
+                  onPress={handleRegister}
+                  disabled={loading}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    {
+                      backgroundColor: loading ? '#A5D6A7' : '#2E7D32',
+                      opacity: pressed ? 0.9 : 1,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4.65,
+                      elevation: 8,
+                      width: '100%',
+                      borderWidth: 1,
+                      borderColor: '#1B5E20',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: '#FFFFFF',
+                      fontWeight: '700',
+                      fontSize: 18,
+                      letterSpacing: 0.5,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {loading ? 'Creating account...' : 'Create Account'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {error && (
+                <MotiView
+                  from={{ opacity: 0, translateY: -10 }}
+                  animate={{ opacity: 1, translateY: 0 }}
+                  transition={{ type: 'timing', duration: 300 }}
+                >
+                  <Surface
+                    style={[
+                      styles.errorContainer,
+                      { backgroundColor: theme.colors.errorContainer },
+                    ]}
+                  >
+                    <IconButton
+                      icon="alert-circle"
+                      size={20}
+                      iconColor={theme.colors.error}
+                      style={{ margin: 0 }}
+                    />
+                    <Text
+                      variant="bodyMedium"
+                      style={{
+                        color: theme.colors.onErrorContainer,
+                        flex: 1,
+                      }}
+                    >
+                      {error.message}
+                    </Text>
+                  </Surface>
+                </MotiView>
+              )}
+
+              <View style={styles.divider}>
+                <View
+                  style={[styles.dividerLine, { backgroundColor: theme.colors.outlineVariant }]}
+                />
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    paddingHorizontal: spacing.sm,
+                  }}
+                >
+                  or
+                </Text>
+                <View
+                  style={[styles.dividerLine, { backgroundColor: theme.colors.outlineVariant }]}
+                />
+              </View>
+
+              <View style={{ marginTop: spacing.sm, width: '100%', alignItems: 'center' }}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    navigation.navigate('Login');
+                  }}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    {
+                      backgroundColor: '#FFFFFF',
+                      borderWidth: 2,
+                      borderColor: '#4CAF50',
+                      opacity: pressed ? 0.7 : 1,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 2,
+                      elevation: 2,
+                      width: '100%',
+                    },
+                  ]}
+                >
+                  <Text
+                    variant="labelLarge"
+                    style={{
+                      color: '#4CAF50',
+                      fontWeight: '600',
+                      fontSize: 17,
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    Already have an account? Sign in
+                  </Text>
+                </Pressable>
+              </View>
+            </Surface>
+          </MotiView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -268,66 +376,61 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  keyboardView: {
-    flex: 1,
-  },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
+    padding: spacing.lg,
+    justifyContent: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  logoCircle: {
+  logo: {
     width: 100,
     height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  logoEmoji: {
-    fontSize: 50,
+  card: {
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
   },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+  fieldGroup: {
+    marginBottom: spacing.md,
   },
-  formContainer: {
-    marginTop: spacing.md,
-  },
-  buttonContent: {
-    paddingVertical: spacing.xs,
-  },
-  input: {
-    marginBottom: spacing.sm,
-    fontSize: 14,
-  },
-  signUpButton: {
-    marginTop: spacing.md,
-    borderRadius: borderRadius.sm,
-  },
-  signUpButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  errorContainer: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  bottomContainer: {
-    borderTopWidth: 1,
+  primaryButton: {
+    borderRadius: borderRadius.lg,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    marginTop: spacing.sm,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.md,
+    gap: spacing.xs,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  secondaryButton: {
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
   },
 });

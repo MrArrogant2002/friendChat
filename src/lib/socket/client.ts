@@ -11,15 +11,9 @@ function createSocketInstance(
   token: string | null
 ): Socket<ServerToClientEvents, ClientToServerEvents> {
   const instance = io(SOCKET_URL, {
-    transports: ['websocket', 'polling'],
+    transports: ['websocket'],
     autoConnect: false,
     auth: token ? { token } : undefined,
-    // Reconnection strategy - keep trying indefinitely
-    reconnection: true, // Enable automatic reconnection
-    reconnectionAttempts: Infinity, // Never give up trying to reconnect
-    reconnectionDelay: 1000, // Start with 1 second delay
-    reconnectionDelayMax: 10000, // Max 10 seconds between attempts (exponential backoff)
-    timeout: 10000, // 10 second connection timeout for each attempt
   }) as Socket<ServerToClientEvents, ClientToServerEvents>;
 
   activeToken = token;

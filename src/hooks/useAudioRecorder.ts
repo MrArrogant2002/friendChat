@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
 
 import {
-    RecordingPresets,
-    // useAudioRecorderState, // Reserved for future use
-    useAudioRecorder as useExpoAudioRecorder,
+  RecordingPresets,
+  useAudioRecorderState,
+  useAudioRecorder as useExpoAudioRecorder,
 } from 'expo-audio';
 
 import type { AudioRecordingAsset, MediaHookError } from '@/lib/media/types';
@@ -28,7 +28,7 @@ export type UseAudioRecorderResult = {
 
 export function useAudioRecorder(): UseAudioRecorderResult {
   const recorder = useExpoAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  // const recorderState = useAudioRecorderState(recorder); // Reserved for future use
+  const recorderState = useAudioRecorderState(recorder);
   const [status, setStatus] = useState<AudioRecorderStatus>('idle');
   const [error, setError] = useState<MediaHookError | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
