@@ -12,8 +12,10 @@ import {
   ActivityIndicator,
   Avatar,
   Button,
-  HelperText,
+  Dialog,
   IconButton,
+  Menu,
+  Portal,
   Surface,
   Text,
   useTheme
@@ -30,7 +32,7 @@ import { useChatSocket } from '@/hooks/useChatSocket';
 import { useImagePicker } from '@/hooks/useImagePicker';
 import { useSession } from '@/hooks/useSession';
 import type { Message as ApiMessage, MessageAttachment } from '@/lib/api/types';
-import { borderRadius, shadows, spacing } from '@/theme';
+import { borderRadius, spacing } from '@/theme';
 import type { RootStackScreenProps } from '@/types/navigation';
 
 function formatDuration(durationMillis: number | null | undefined): string {
@@ -59,30 +61,36 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
   const { token, user } = useSession();
   const [draft, setDraft] = useState('');
   const [conversation, setConversation] = useState<ApiMessage[]>([]);
-  const [isTyping] = useState(false); // Reserved for typing indicator
+  const [isTyping] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [clearChatDialogVisible, setClearChatDialogVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const isNearBottomRef = useRef(true);
   const isInitialLoadRef = useRef(true);
+  
   const {
     data: remoteMessages,
     loading: isLoadingMessages,
     error: messagesError,
     refetch,
   } = useMessagesQuery(chatId, { enabled: Boolean(token) });
+  
   const {
     mutate: sendMessage,
     loading: isSending,
     error: sendError,
     reset: resetSendError,
   } = useSendMessageMutation();
+  
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  
   const {
     pickImage,
-    // loading: isPickingImage, // Reserved for future use
     error: imagePickerError,
     reset: resetImageError,
   } = useImagePicker();
+  
   const {
     startRecording,
     stopRecording,
@@ -130,15 +138,19 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     );
   }, []);
 
+  // Handle incoming message - WhatsApp style (immediate update)
   const handleIncomingMessage = useCallback(
     (message: ApiMessage) => {
-      console.log('[ChatRoom] Incoming message:', message.id);
       upsertMessage(message);
+      // Auto-scroll if user is near bottom
+      if (isNearBottomRef.current) {
+        setTimeout(() => scrollToBottomSmooth(true), 100);
+      }
     },
     [upsertMessage]
   );
 
-  const { status: socketStatus, error: socketError, sendPendingMessage } = useChatSocket(chatId, {
+  const { status: socketStatus, sendPendingMessage } = useChatSocket(chatId, {
     enabled: Boolean(token),
     onMessage: handleIncomingMessage,
     onPendingMessageUpdate: handlePendingMessageUpdate,
@@ -155,22 +167,9 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
   // Load initial messages from API
   useEffect(() => {
     if (remoteMessages) {
-      console.log('[ChatRoom] Raw messages from API:', remoteMessages.length);
-      remoteMessages.forEach((msg, idx) => {
-        console.log(`[${idx}] ${msg.createdAt} - ${msg.content?.substring(0, 20)}`);
-      });
-      
-      // Sort messages by createdAt DESCENDING (newest first, oldest last)
-      // This is reversed because FlatList is inverted
       const sorted = [...remoteMessages].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-      
-      console.log('[ChatRoom] Sorted messages (reversed for inverted list):', sorted.length);
-      sorted.forEach((msg, idx) => {
-        console.log(`[${idx}] ${msg.createdAt} - ${msg.content?.substring(0, 20)}`);
-      });
-      
       setConversation(sorted);
       isInitialLoadRef.current = true;
     }
@@ -222,36 +221,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     });
   }, [addAttachment, imagePickerError, pickImage, resetImageError, token]);
 
-  /* Camera capture functionality - reserved for future use
-  const handleCaptureImage = useCallback(async () => {
-    if (!token) {
-      return;
-    }
 
-    if (imagePickerError) {
-      resetImageError();
-    }
-
-    const image = await captureImage({ allowsEditing: true });
-
-    if (!image) {
-      return;
-    }
-
-    addAttachment({
-      kind: 'image',
-      url: image.uri,
-      metadata: {
-        width: image.width,
-        height: image.height,
-        fileSize: image.fileSize,
-        fileName: image.fileName,
-        mimeType: image.mimeType,
-        source: image.fromCamera ? 'camera' : 'library',
-      },
-    });
-  }, [addAttachment, captureImage, imagePickerError, resetImageError, token]);
-  */
 
   const handleToggleRecording = useCallback(async () => {
     if (!token) {
@@ -289,42 +259,44 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     token,
   ]);
 
+  // WhatsApp-style send: Optimistic update with pending state
   const handleSend = async () => {
     const trimmed = draft.trim();
-    if (!token || !user) {
-      return;
-    }
+    if (!token || !user) return;
 
     const hasText = trimmed.length > 0;
     const hasAttachments = pendingAttachments.length > 0;
+    if (!hasText && !hasAttachments) return;
 
-    if (!hasText && !hasAttachments) {
-      return;
-    }
+    // Generate temp ID for optimistic update
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const pendingMsg: ApiMessage = {
+      id: tempId,
+      chatId,
+      sender: user,
+      content: trimmed,
+      attachments: hasAttachments ? pendingAttachments : [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-    // If socket is disconnected or reconnecting, queue the message locally
-    if (socketStatus === 'disconnected' || socketStatus === 'reconnecting' || socketStatus === 'error') {
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const pendingMsg: ApiMessage = {
-        id: tempId,
-        chatId,
-        sender: user,
-        content: trimmed,
-        attachments: hasAttachments ? pendingAttachments : [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    // Clear input immediately (WhatsApp behavior)
+    setDraft('');
+    setPendingAttachments([]);
 
-      // Add to conversation immediately with pending status
-      setConversation((prev) => {
-        const updated = [...prev, pendingMsg];
-        // Sort DESCENDING (newest first) because FlatList is inverted
-        return updated.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      });
+    // Add to conversation immediately with pending status
+    setConversation((prev) => {
+      const updated = [pendingMsg, ...prev];
+      return updated.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    });
 
-      // Queue for sending when socket reconnects
+    // Scroll to show new message
+    setTimeout(() => scrollToBottomSmooth(true), 100);
+
+    // Send via socket if connected, otherwise queue
+    if (socketStatus === 'connected') {
       sendPendingMessage({
         tempId,
         chatId,
@@ -332,24 +304,27 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
         attachments: hasAttachments ? pendingAttachments : undefined,
         createdAt: new Date().toISOString(),
       });
-
-      setDraft('');
-      setPendingAttachments([]);
-      return;
     }
 
-    // Socket is connected, send normally via REST API
+    // Also send via REST API for reliability
     try {
       const message = await sendMessage({
         chatId,
         content: hasText ? trimmed : undefined,
         attachments: hasAttachments ? pendingAttachments : undefined,
       });
-      upsertMessage(message);
-      setDraft('');
-      setPendingAttachments([]);
-    } catch {
-      // Error already captured by the mutation hook; no further handling required.
+      
+      // Update the pending message with server response
+      setConversation((prev) =>
+        prev.map((msg) => (msg.id === tempId ? message : msg))
+      );
+    } catch (error) {
+      // Mark message as failed
+      setConversation((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId ? { ...msg, id: `failed_${tempId}` } : msg
+        )
+      );
     }
   };
 
@@ -367,11 +342,27 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
   }, []);
 
   const handleDraftChange = (value: string) => {
-    if (sendError) {
-      resetSendError();
-    }
+    if (sendError) resetSendError();
     setDraft(value);
   };
+
+  const handleClearChat = () => {
+    setConversation([]);
+    setClearChatDialogVisible(false);
+    // Optionally call API to clear chat history on server
+  };
+
+  const gradientColors = useMemo(() => {
+    const gradients = [
+      ['#667eea', '#764ba2'],
+      ['#f093fb', '#f5576c'],
+      ['#4facfe', '#00f2fe'],
+      ['#43e97b', '#38f9d7'],
+      ['#fa709a', '#fee140'],
+    ];
+    const index = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradients.length;
+    return gradients[index];
+  }, [title]);
 
   const listEmptyComponent = useMemo(() => {
     if (!token) {
@@ -421,46 +412,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     token,
   ]);
 
-  /* Helper functions - reserved for future use
-  const resolveSenderLabel = (message: ApiMessage) => {
-    const senderId =
-      typeof message.sender === 'string'
-        ? message.sender
-        : message.sender?.id || (message.sender as any)?._id?.toString();
 
-    if (senderId && senderId === user?.id) {
-      return 'You';
-    }
-    if (typeof message.sender === 'object' && message.sender?.name) {
-      return message.sender.name;
-    }
-    return 'Participant';
-  };
-
-  const hasDraftContent = draft.trim().length > 0;
-  const hasPendingAttachments = pendingAttachments.length > 0;
-  const isComposerDisabled = !token || isSending || isStoppingRecording;
-  const disableMediaActions =
-    !token || isSending || isPickingImage || isStoppingRecording || isRecording;
-  */
-
-  /* Socket status message - reserved for future use
-  const socketStatusMessage = useMemo(() => {
-    if (!token) {
-      return null;
-    }
-    if (socketError) {
-      return null;
-    }
-    if (socketStatus === 'connecting') {
-      return 'Connecting to live updates…';
-    }
-    if (socketStatus === 'disconnected') {
-      return 'Realtime connection lost. Retrying…';
-    }
-    return null;
-  }, [socketError, socketStatus, token]);
-  */
 
   const renderPendingAttachment = useCallback(
     (attachment: MessageAttachment) => {
@@ -507,52 +459,7 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     ]
   );
 
-  /* Message attachment renderer - reserved for future use
-  const renderMessageAttachment = useCallback(
-    (attachment: MessageAttachment) => {
-      if (attachment.kind === 'image') {
-        return <Image source={{ uri: attachment.url }} style={styles.messageImageAttachment} />;
-      }
 
-      if (attachment.kind === 'audio') {
-        const durationMillis = getAttachmentDuration(attachment);
-        const formatted = durationMillis ? formatDuration(durationMillis) : null;
-        return (
-          <View
-            style={[
-              styles.audioAttachment,
-              {
-                borderColor: theme.colors.surfaceVariant,
-                backgroundColor: theme.colors.surface,
-              },
-            ]}
-          >
-            <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
-              Audio clip
-            </Text>
-            {formatted ? (
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                {formatted}
-              </Text>
-            ) : null}
-          </View>
-        );
-      }
-
-      return (
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-          Attachment available
-        </Text>
-      );
-    },
-    [
-      theme.colors.onSurfaceVariant,
-      theme.colors.primary,
-      theme.colors.surface,
-      theme.colors.surfaceVariant,
-    ]
-  );
-  */
 
   const listFooterComponent = useMemo(() => {
     return (
@@ -591,78 +498,82 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
     );
   }, [isTyping, pendingAttachments, theme.colors, renderPendingAttachment, removeAttachment]);
 
-  // Get gradient colors for avatar based on name
-  const gradientColors = useMemo(() => {
-    const gradients = [
-      ['#667eea', '#764ba2'],
-      ['#f093fb', '#f5576c'],
-      ['#4facfe', '#00f2fe'],
-      ['#43e97b', '#38f9d7'],
-      ['#fa709a', '#fee140'],
-      ['#30cfd0', '#330867'],
-      ['#a8edea', '#fed6e3'],
-      ['#ff9a9e', '#fecfef'],
-    ];
-    const index = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradients.length;
-    return gradients[index];
-  }, [title]);
-
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[styles.container, { backgroundColor: theme.dark ? '#0A0E1A' : '#F0F2F5' }]}
       edges={['top']}
     >
-      {/* Modern Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.background }]}>
+      {/* WhatsApp-style Header */}
+      <View style={[styles.header, { backgroundColor: theme.dark ? '#1C1F2E' : '#FFFFFF' }]}>
         <View style={styles.headerLeft}>
           <Pressable
             onPress={() => navigation.goBack()}
-            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginRight: spacing.xs }]}
           >
             <IconButton icon="arrow-left" size={24} iconColor={theme.colors.onBackground} style={{ margin: 0 }} />
           </Pressable>
           <Avatar.Text
-            size={40}
+            size={42}
             label={title.slice(0, 2).toUpperCase()}
-            style={{ backgroundColor: gradientColors[0] }}
-            labelStyle={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}
+            style={{ backgroundColor: gradientColors[0], marginRight: spacing.sm }}
+            labelStyle={{ color: '#FFFFFF', fontSize: 17, fontWeight: '700' }}
           />
           <View style={styles.headerTitleContainer}>
-            <Text variant="titleMedium" style={{ color: theme.colors.onBackground, fontWeight: '700', fontSize: 18 }}>
+            <Text variant="titleMedium" style={{ color: theme.colors.onBackground, fontWeight: '700', fontSize: 17 }}>
               {title}
             </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
-              {socketStatus === 'connected' ? 'online' : 'offline'}
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontSize: 13 }}>
+              {socketStatus === 'connected' ? 'online' : 'tap here for contact info'}
             </Text>
           </View>
         </View>
         <View style={styles.headerRight}>
-          <IconButton icon="video-outline" size={24} iconColor={theme.dark ? '#5E97F6' : theme.colors.primary} style={{ margin: 0 }} />
-          <IconButton icon="phone-outline" size={24} iconColor={theme.dark ? '#66BB6A' : theme.colors.primary} style={{ margin: 0 }} />
-          <IconButton icon="dots-vertical" size={24} iconColor={theme.colors.onBackground} style={{ margin: 0 }} />
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <IconButton
+                icon="dots-vertical"
+                size={24}
+                iconColor={theme.colors.onBackground}
+                onPress={() => setMenuVisible(true)}
+                style={{ margin: 0 }}
+              />
+            }
+          >
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                setClearChatDialogVisible(true);
+              }}
+              title="Clear chat"
+              leadingIcon="delete-outline"
+            />
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                // Add more options here
+              }}
+              title="Mute notifications"
+              leadingIcon="bell-off-outline"
+            />
+          </Menu>
         </View>
       </View>
 
-      {/* Reconnection status banner */}
-      {(socketStatus === 'reconnecting' || socketStatus === 'disconnected' || socketStatus === 'error') && (
-        <View style={[styles.reconnectionBanner, { backgroundColor: theme.dark ? 'rgba(239, 83, 80, 0.15)' : theme.colors.errorContainer }]}>
-          <ActivityIndicator size="small" color={theme.dark ? '#EF5350' : theme.colors.error} />
-          <Text style={[styles.reconnectionText, { color: theme.dark ? '#EF5350' : theme.colors.error }]}>
-            {socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected. Retrying...'}
-          </Text>
-        </View>
-      )}
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
         <FlatList
           ref={flatListRef}
           data={conversation}
           keyExtractor={(item, index) => item.id || `message-${index}`}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: spacing.lg }
+          ]}
           ListEmptyComponent={listEmptyComponent}
           ListHeaderComponent={listFooterComponent}
           onScroll={handleScroll}
@@ -698,10 +609,8 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
           }}
         />
 
-        {/* Scroll to bottom button */}
         <ScrollToBottomButton visible={showScrollButton} onPress={scrollToBottom} />
 
-        {/* Input toolbar */}
         <InputToolbar
           draft={draft}
           onChangeDraft={handleDraftChange}
@@ -718,28 +627,29 @@ const ChatRoomScreen: React.FC<RootStackScreenProps<'ChatRoom'>> = ({ route, nav
           disabled={!token}
         />
 
-        {/* Error messages */}
-        {imagePickerError && (
-          <HelperText type="error" visible={Boolean(imagePickerError)}>
-            {imagePickerError.message}
-          </HelperText>
-        )}
-        {audioRecorderError && (
-          <HelperText type="error" visible={Boolean(audioRecorderError)}>
-            {audioRecorderError.message}
-          </HelperText>
-        )}
+        {/* Error messages - only show critical ones */}
         {sendError && (
-          <HelperText type="error" visible={Boolean(sendError)}>
-            {sendError.message}
-          </HelperText>
-        )}
-        {socketError && (
-          <HelperText type="error" visible={Boolean(socketError)}>
-            {socketError.message}
-          </HelperText>
+          <View style={[styles.errorBanner, { backgroundColor: theme.colors.errorContainer }]}>
+            <Text style={{ color: theme.colors.error, fontSize: 13 }}>
+              Message failed to send. Tap to retry.
+            </Text>
+          </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* Clear Chat Dialog */}
+      <Portal>
+        <Dialog visible={clearChatDialogVisible} onDismiss={() => setClearChatDialogVisible(false)}>
+          <Dialog.Title>Clear chat?</Dialog.Title>
+          <Dialog.Content>
+            <Text>This will clear all messages from this conversation. This action cannot be undone.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setClearChatDialogVisible(false)}>Cancel</Button>
+            <Button onPress={handleClearChat} textColor={theme.colors.error}>Clear</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </SafeAreaView>
   );
 };
@@ -754,120 +664,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 0,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     flex: 1,
   },
   headerTitleContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  reconnectionBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  reconnectionText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
   listContent: {
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingBottom: 16,
-    paddingTop: 8,
-  },
-  messageBubble: {
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 0,
-    marginVertical: spacing.xs,
-    maxWidth: '80%',
-  },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: borderRadius.xl,
+    gap: 2,
     paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-    ...shadows.md,
-  },
-  mediaActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 0,
-  },
-  composerInput: {
-    flex: 1,
-    minHeight: 44,
+    paddingTop: spacing.sm,
   },
   emptyStateSurface: {
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.xl * 2,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   retryButton: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   pendingAttachmentsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   pendingAttachmentCard: {
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    padding: spacing.md,
+    padding: spacing.sm,
     position: 'relative',
     justifyContent: 'center',
   },
   pendingImageAttachment: {
     width: 120,
     height: 120,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.sm,
   },
   removeAttachmentButton: {
     position: 'absolute',
     top: -8,
     right: -8,
   },
-  messageAttachments: {
-    marginTop: spacing.sm,
-    gap: spacing.sm,
-  },
-  messageAttachmentWrapper: {
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-  },
-  messageImageAttachment: {
-    width: 180,
-    height: 180,
-    borderRadius: borderRadius.md,
-  },
   audioAttachment: {
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     gap: spacing.xs,
     minWidth: 140,
     alignItems: 'flex-start',
+  },
+  errorBanner: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
   },
 });

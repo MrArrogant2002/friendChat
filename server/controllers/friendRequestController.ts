@@ -1,6 +1,8 @@
 import { Types } from 'mongoose';
 
 import { HttpError } from '../lib/httpError';
+import { sendPushNotification } from '../lib/pushNotifications';
+import ChatRoomModel from '../models/ChatRoom';
 import FriendRequestModel from '../models/FriendRequest';
 import FriendshipModel from '../models/Friendship';
 import UserModel from '../models/User';
@@ -35,6 +37,16 @@ export async function sendFriendRequest(currentUserId: string, friendId: string)
     { $setOnInsert: { from: fromId, to: toId, status: 'pending' } },
     { upsert: true, new: true }
   ).lean();
+
+  // Send push notification to the recipient
+  const sender = await UserModel.findById(fromId).select('name').lean();
+  if (sender) {
+    void sendPushNotification(friendId, {
+      title: 'New Friend Request',
+      body: `${sender.name} sent you a friend request`,
+      data: { type: 'friend_request', requestId: request._id.toString() },
+    });
+  }
 
   return request;
 }
@@ -92,11 +104,40 @@ export async function acceptRequest(requestId: string, currentUserId: string) {
   // return a simple payload
   const friend = await UserModel.findById(fromId).select('name email avatarUrl').lean();
 
+  // Compute deterministic chatId for the two users and create/ensure ChatRoom record exists
+  const fromIdStr = fromId.toString();
+  const toIdStr = toId.toString();
+  const chatId = [fromIdStr, toIdStr].sort().join('-');
+
+  // Create or update the ChatRoom record
+  await ChatRoomModel.updateOne(
+    { chatId },
+    {
+      $setOnInsert: {
+        chatId,
+        participants: [fromId, toId],
+        title: friend?.name || 'Chat',
+      },
+    },
+    { upsert: true }
+  );
+
+  // Send push notification to the requester (they were accepted!)
+  const acceptor = await UserModel.findById(toId).select('name').lean();
+  if (acceptor) {
+    void sendPushNotification(fromIdStr, {
+      title: 'Friend Request Accepted',
+      body: `${acceptor.name} accepted your friend request`,
+      data: { type: 'friend_accepted', chatId, title: friend?.name || 'Chat' },
+    });
+  }
+
   return {
     requestId: reqObjId.toString(),
     friend: friend
       ? { id: friend._id.toString(), name: friend.name, email: friend.email, avatarUrl: friend.avatarUrl ?? '' }
       : null,
+    chatId,
   };
 }
 

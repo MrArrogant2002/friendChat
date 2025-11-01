@@ -53,13 +53,15 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
 
-  const maxBubbleWidth = screenWidth * 0.75; // 75% of screen width
+  const maxBubbleWidth = screenWidth * 0.75;
 
-  // Modern bubble colors
+  // WhatsApp-style colors
   const bubbleBackgroundColor = isMine 
-    ? theme.colors.primary 
-    : (theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)');
-  const textColor = isMine ? '#FFFFFF' : theme.colors.onBackground;
+    ? (theme.dark ? '#005C4B' : '#DCF8C6')
+    : (theme.dark ? '#1F2C34' : '#FFFFFF');
+  const textColor = isMine 
+    ? (theme.dark ? '#FFFFFF' : '#000000')
+    : theme.colors.onBackground;
 
   const renderAttachment = (attachment: MessageAttachment, attachmentIndex: number) => {
     if (attachment.kind === 'image' && attachment.url) {
@@ -108,16 +110,20 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         ]}
       >
         <Surface
-          elevation={0}
+          elevation={isMine ? 0 : 1}
           style={[
             styles.bubble,
             {
               backgroundColor: bubbleBackgroundColor,
               maxWidth: maxBubbleWidth,
-              borderTopLeftRadius: borderRadius.xl,
-              borderTopRightRadius: borderRadius.xl,
-              borderBottomRightRadius: isMine ? spacing.xs : borderRadius.xl,
-              borderBottomLeftRadius: isMine ? borderRadius.xl : spacing.xs,
+              borderTopLeftRadius: borderRadius.lg,
+              borderTopRightRadius: borderRadius.lg,
+              borderBottomRightRadius: isMine ? 4 : borderRadius.lg,
+              borderBottomLeftRadius: isMine ? borderRadius.lg : 4,
+              shadowColor: theme.dark ? 'transparent' : '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
             },
           ]}
         >
@@ -128,7 +134,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
               style={[
                 styles.senderName,
                 {
-                  color: theme.dark ? '#5E97F6' : theme.colors.primary,
+                  color: '#06CF9C',
+                  fontWeight: '600',
                 },
               ]}
             >
@@ -169,8 +176,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                   styles.timestamp,
                   {
                     color: isMine
-                      ? 'rgba(255, 255, 255, 0.7)' // 70% opacity white for sent messages
-                      : theme.colors.onSurfaceVariant, // Standard secondary text
+                      ? (theme.dark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.45)')
+                      : theme.colors.onSurfaceVariant,
                   },
                 ]}
               >
@@ -181,17 +188,19 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                 })}
               </Text>
 
-              {/* Status indicator for sent messages */}
+              {/* WhatsApp-style status icons for sent messages */}
               {isMine && (
                 <Text
                   style={[
                     styles.statusIcon,
                     {
-                      color: isPending ? 'rgba(255, 255, 255, 0.4)' : '#FFFFFF',
+                      color: isPending 
+                        ? (theme.dark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.3)')
+                        : (theme.dark ? '#53BDEB' : '#4FC3F7'),
                     },
                   ]}
                 >
-                  {isPending ? '○' : '✓'}
+                  {isPending ? '🕐' : '✓✓'}
                 </Text>
               )}
             </View>
@@ -204,8 +213,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    marginVertical: 1,
+    paddingHorizontal: spacing.sm,
   },
   alignLeft: {
     alignItems: 'flex-start',
@@ -214,25 +223,28 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   bubble: {
-    padding: spacing.md,
-    borderRadius: borderRadius.xl,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
     minWidth: 80,
   },
   senderName: {
     fontWeight: '600',
-    marginBottom: spacing.xs,
+    marginBottom: 2,
+    fontSize: 13,
   },
   messageText: {
     lineHeight: 20,
+    fontSize: 15,
   },
   attachmentsContainer: {
-    marginTop: spacing.sm,
-    gap: spacing.sm,
+    marginTop: spacing.xs,
+    gap: spacing.xs,
   },
   imageAttachment: {
     width: '100%',
-    height: 180,
-    borderRadius: borderRadius.md,
+    height: 200,
+    borderRadius: borderRadius.sm,
     marginTop: spacing.xs,
   },
   audioAttachment: {
@@ -248,16 +260,16 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
+    gap: 4,
+    marginTop: 4,
     alignSelf: 'flex-end',
   },
   timestamp: {
     fontSize: 11,
   },
   statusIcon: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

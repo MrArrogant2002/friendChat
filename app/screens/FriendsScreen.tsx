@@ -1,21 +1,22 @@
 import type { NavigationProp } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, LayoutAnimation, Platform, Pressable, RefreshControl, StyleSheet, UIManager, View } from 'react-native';
 import {
-  ActivityIndicator,
-  Button,
-  FAB,
-  HelperText,
-  IconButton,
-  Text,
-  TextInput,
-  useTheme
+    ActivityIndicator,
+    Button,
+    FAB,
+    HelperText,
+    Snackbar,
+    Text,
+    TextInput,
+    useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ContactListItem from '@/components/ContactListItem';
 import { useAddFriendMutation, useFriendRequests, useFriendSearch, useFriendsList } from '@/hooks/useFriends';
+import { useOnlineUsers } from '@/hooks/useOnlineStatus';
 import { useSession } from '@/hooks/useSession';
 import type { FriendProfile } from '@/lib/api/types';
 import { borderRadius, spacing } from '@/theme';
@@ -25,6 +26,9 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
   const theme = useTheme();
   const { token, user } = useSession();
   const { data: friends, loading, error, refetch, isStale } = useFriendsList({ enabled: Boolean(token) });
+  
+  // Track online users via socket
+  const onlineUsers = useOnlineUsers();
 
   // UI state for tabs and search
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
@@ -47,6 +51,17 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
 
   // Local copy for optimistic updates
   const [localRequests, setLocalRequests] = useState<any[] | null>(null);
+  // Snackbar for quick feedback
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState('');
+
+  // Enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      // @ts-ignore
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
   useEffect(() => {
     setLocalRequests(pendingRequests ? [...pendingRequests] : []);
@@ -211,8 +226,7 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
             />
           )}
         </View>
-        {/* Add Friend icon in header (top-right) */}
-        <IconButton icon="account-plus" onPress={() => setActiveTab('search')} size={26} />
+  {/* header right intentionally left empty — FAB exists for Add Friend */}
       </View>
 
       {/* Top tab bar (Friends / Requests / Search) */}
@@ -274,6 +288,10 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
                 colors={[theme.colors.primary]}
               />
             }
+            initialNumToRender={6}
+            maxToRenderPerBatch={8}
+            windowSize={8}
+            removeClippedSubviews={true}
           />
         </View>
       ) : activeTab === 'requests' ? (
@@ -293,15 +311,26 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
                   mode="contained"
                   compact
                   onPress={async () => {
+                    // animate layout change
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                     // optimistic remove
                     setLocalRequests((prev) => (prev ? prev.filter((r) => r.id !== item.id) : prev));
                     try {
-                      await friendRequestsHook.accept(item.id);
-                      // on accept, refetch friends list
+                      const res = await friendRequestsHook.accept(item.id);
+                      setSnackbarMsg('Friend added');
+                      setSnackbarVisible(true);
+                      // refetch friends list
                       void refetch();
+                      // if server returned a chatId, navigate into chat
+                      if (res && res.chatId) {
+                        const parentNavigation = navigation.getParent<NavigationProp<RootStackParamList>>();
+                        parentNavigation?.navigate('ChatRoom', { chatId: res.chatId, title: item.from?.name || item.from?.email });
+                      }
                     } catch (err) {
                       // revert on failure
                       setLocalRequests((prev) => (prev ? [item, ...prev] : [item]));
+                      setSnackbarMsg('Failed to accept request');
+                      setSnackbarVisible(true);
                     }
                   }}
                   style={{ backgroundColor: theme.colors.primary, borderRadius: borderRadius.sm }}
@@ -313,11 +342,16 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
                   mode="outlined"
                   compact
                   onPress={async () => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                     setLocalRequests((prev) => (prev ? prev.filter((r) => r.id !== item.id) : prev));
                     try {
                       await friendRequestsHook.reject(item.id);
+                      setSnackbarMsg('Request rejected');
+                      setSnackbarVisible(true);
                     } catch (err) {
                       setLocalRequests((prev) => (prev ? [item, ...prev] : [item]));
+                      setSnackbarMsg('Failed to reject request');
+                      setSnackbarVisible(true);
                     }
                   }}
                   style={{ borderRadius: borderRadius.sm }}
@@ -335,6 +369,10 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
             </View>
           )}
           contentContainerStyle={styles.listContent}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={8}
+          removeClippedSubviews={true}
         />
       ) : (
         // Friends tab
@@ -362,7 +400,7 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
                 subtitle={item.email}
                 avatarLabel={(item.name || item.email).slice(0, 2).toUpperCase()}
                 onPress={() => handleChatNow(item.id, item.name || item.email)}
-                isOnline={Boolean(item.isOnline)}
+                isOnline={onlineUsers.has(item.id)}
               />
             )}
             contentContainerStyle={styles.listContent}
@@ -380,6 +418,10 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
                 colors={[theme.colors.primary]}
               />
             }
+            initialNumToRender={8}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            removeClippedSubviews={true}
           />
         </>
       )}
@@ -387,11 +429,26 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
       {/* Floating Add Friend button */}
       <FAB
         icon="account-plus"
-        small={false}
+        label="Add Friend"
+        size="medium"
         onPress={() => setActiveTab('search')}
-        style={styles.fab}
+        style={[
+          styles.fab,
+          { backgroundColor: theme.colors.primary }
+        ]}
+        color="#ffffff"
         accessibilityLabel="Add Friend"
+        visible={activeTab === 'friends'} // Only show on friends tab
       />
+      {/* Snackbar for feedback */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={2500}
+        action={{ label: 'OK', onPress: () => setSnackbarVisible(false) }}
+      >
+        {snackbarMsg}
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -451,7 +508,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: spacing.base,
     paddingTop: spacing.xs,
-    paddingBottom: 100, // Space for floating tab bar
+    paddingBottom: 120, // Increased space for FAB and bottom tab bar
   },
   emptyStateContainer: {
     flex: 1,
@@ -486,9 +543,12 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: spacing.base,
-    bottom: 36,
-    backgroundColor: '#0ea5e9',
-    elevation: 6,
+    right: spacing.base + 4,
+    bottom: 100, // Position above the bottom tab bar
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });

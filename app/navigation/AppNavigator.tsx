@@ -8,12 +8,15 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 import { PaperProvider, useTheme } from 'react-native-paper';
 
+import { useNotificationResponseListener, usePushNotifications } from '@/hooks/usePushNotifications';
+import { useSession } from '@/hooks/useSession';
 import { useThemePreference } from '@/hooks/useThemePreference';
 import { setUnauthorizedListener } from '@/lib/api/client';
+import { registerPushToken } from '@/lib/api/pushToken';
 import { clearSession } from '@/lib/api/session';
 import { darkTheme, lightTheme, navigationDarkTheme, navigationLightTheme, spacing } from '@/theme';
 import type {
@@ -108,6 +111,8 @@ const AppNavigator: React.FC = () => {
   const systemColorScheme = useColorScheme();
   const { themeMode } = useThemePreference();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const session = useSession();
+  const { expoPushToken } = usePushNotifications();
 
   const isDarkMode = useMemo(() => {
     if (themeMode === 'system') {
@@ -132,6 +137,27 @@ const AppNavigator: React.FC = () => {
       setUnauthorizedListener(null);
     };
   }, [navigationRef]);
+
+  // Register push token when user is authenticated
+  useEffect(() => {
+    if (session.token && expoPushToken) {
+      registerPushToken(expoPushToken).catch((err: any) => {
+        console.warn('Failed to register push token:', err);
+      });
+    }
+  }, [session.token, expoPushToken]);
+
+  // Handle notification responses (when user taps notification)
+  useNotificationResponseListener(useCallback((response: any) => {
+    const data = response.notification.request.content.data;
+    
+    // Navigate to appropriate screen based on notification type
+    if (data?.chatId && data?.title) {
+      navigationRef.navigate('ChatRoom', { chatId: data.chatId, title: data.title });
+    } else if (data?.type === 'friend_request') {
+      navigationRef.navigate('AppTabs');
+    }
+  }, [navigationRef]));
 
   return (
     <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>

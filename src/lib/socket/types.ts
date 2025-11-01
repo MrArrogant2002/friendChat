@@ -4,6 +4,8 @@ import { SOCKET_EVENTS } from './events';
 
 export type ServerToClientEvents = {
   [SOCKET_EVENTS.chatMessage]: (message: Message) => void;
+  'user-online': (payload: { userId: string }) => void;
+  'user-offline': (payload: { userId: string }) => void;
 };
 
 export type ClientToServerEvents = {

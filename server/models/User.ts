@@ -7,6 +7,7 @@ const userSchema = new Schema(
     password: { type: String, required: true },
     avatarUrl: { type: String, default: '' },
     lastActive: { type: Date, default: Date.now },
+    pushTokens: [{ type: String }], // Array of Expo push tokens for this user
   },
   { timestamps: true }
 );
