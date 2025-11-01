@@ -23,7 +23,7 @@ export function useRegisterMutation() {
   });
 }
 
-export function useProfileQuery(options: ApiQueryOptions = {}) {
+export function useProfileQuery(options: ApiQueryOptions<ApiUser> = {}) {
   const { token } = useSession();
   const enabled = (options.enabled ?? true) && Boolean(token);
 

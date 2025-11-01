@@ -1,19 +1,21 @@
 import type { NavigationProp } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import {
-    ActivityIndicator,
-    Avatar,
-    Button,
-    HelperText,
-    Text,
-    useTheme,
+  ActivityIndicator,
+  Button,
+  FAB,
+  HelperText,
+  IconButton,
+  Text,
+  TextInput,
+  useTheme
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ContactListItem from '@/components/ContactListItem';
-import { useFriendsList } from '@/hooks/useFriends';
+import { useAddFriendMutation, useFriendRequests, useFriendSearch, useFriendsList } from '@/hooks/useFriends';
 import { useSession } from '@/hooks/useSession';
 import type { FriendProfile } from '@/lib/api/types';
 import { borderRadius, spacing } from '@/theme';
@@ -23,6 +25,32 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
   const theme = useTheme();
   const { token, user } = useSession();
   const { data: friends, loading, error, refetch, isStale } = useFriendsList({ enabled: Boolean(token) });
+
+  // UI state for tabs and search
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
+  const [query, setQuery] = useState<string>('');
+  const [debouncedQuery, setDebouncedQuery] = useState<string>('');
+
+  // Debounce the search input to be responsive
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
+
+  const { data: searchResults, loading: searching } = useFriendSearch(debouncedQuery);
+  const addFriendMutation = useAddFriendMutation();
+
+  // Friend requests (hook handles fetching + accept/reject)
+  const friendRequestsHook = useFriendRequests();
+  const pendingRequests = friendRequestsHook.data ?? [];
+  const pendingCount = pendingRequests.length;
+
+  // Local copy for optimistic updates
+  const [localRequests, setLocalRequests] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    setLocalRequests(pendingRequests ? [...pendingRequests] : []);
+  }, [pendingRequests]);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,6 +94,7 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
         subtitle={item.email}
         avatarLabel={(item.name || item.email).slice(0, 2).toUpperCase()}
         onPress={() => handleChatNow(item.id, item.name || item.email)}
+        isOnline={Boolean((item as any).isOnline)}
       />
     ),
     [handleChatNow]
@@ -182,120 +211,186 @@ const FriendsScreen: React.FC<AppTabsScreenProps<'Friends'>> = ({ navigation }) 
             />
           )}
         </View>
+        {/* Add Friend icon in header (top-right) */}
+        <IconButton icon="account-plus" onPress={() => setActiveTab('search')} size={26} />
       </View>
 
-      {/* Story-style Your Story Section */}
-      <View
-        style={[
-          styles.storiesSection,
-          { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.outline },
-        ]}
-      >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storiesContent}>
-          {/* Your Story */}
-          <Pressable style={styles.storyItem}>
-            <View
-              style={[
-                styles.storyCircle,
-                {
-                  backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                  borderColor: theme.colors.outline,
-                },
-              ]}
-            >
-              <Avatar.Text
-                size={64}
-                label={user?.name?.slice(0, 2).toUpperCase() || 'U'}
-                style={{ backgroundColor: theme.colors.primaryContainer }}
-                labelStyle={{ color: theme.colors.onPrimaryContainer, fontSize: 24 }}
+      {/* Top tab bar (Friends / Requests / Search) */}
+      <View style={[styles.tabBar, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.outline }]}>
+        <Pressable onPress={() => setActiveTab('friends')} style={({ pressed }) => [styles.tabItem, activeTab === 'friends' && styles.tabItemActive, { opacity: pressed ? 0.8 : 1 }] }>
+          <Text variant="titleSmall" style={{ color: activeTab === 'friends' ? theme.colors.primary : theme.colors.onBackground, fontWeight: '700' }}>Friends</Text>
+        </Pressable>
+
+        <Pressable onPress={() => setActiveTab('requests')} style={({ pressed }) => [styles.tabItem, activeTab === 'requests' && styles.tabItemActive, { opacity: pressed ? 0.8 : 1 }] }>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text variant="titleSmall" style={{ color: activeTab === 'requests' ? theme.colors.primary : theme.colors.onBackground, fontWeight: '700' }}>Requests</Text>
+            {pendingCount > 0 ? (
+              <View style={styles.requestsBadge}>
+                <Text variant="labelSmall" style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{pendingCount}</Text>
+              </View>
+            ) : null}
+          </View>
+        </Pressable>
+
+        <Pressable onPress={() => setActiveTab('search')} style={({ pressed }) => [styles.tabItem, activeTab === 'search' && styles.tabItemActive, { opacity: pressed ? 0.8 : 1 }] }>
+          <Text variant="titleSmall" style={{ color: activeTab === 'search' ? theme.colors.primary : theme.colors.onBackground, fontWeight: '700' }}>Search</Text>
+        </Pressable>
+      </View>
+
+      {/* Tab content */}
+      {activeTab === 'search' ? (
+        <View style={{ paddingHorizontal: spacing.base, paddingTop: spacing.sm }}>
+          <TextInput
+            placeholder="Search friends by name or email"
+            value={query}
+            onChangeText={setQuery}
+            mode="outlined"
+            style={{ marginBottom: spacing.sm }}
+          />
+          <FlatList
+            data={searchResults ?? []}
+            keyExtractor={(item: any) => item.id}
+            renderItem={({ item }: { item: any }) => (
+              <ContactListItem
+                title={item.name || item.email}
+                subtitle={item.email}
+                avatarLabel={(item.name || item.email).slice(0, 2).toUpperCase()}
+                onPress={() => {
+                  if (!addFriendMutation.loading) {
+                    void addFriendMutation.mutate({ friendId: item.id }).then(() => {
+                      setActiveTab('friends');
+                      refetch();
+                    }).catch(() => {});
+                  }
+                }}
               />
-              <View style={[styles.addStoryBadge, { backgroundColor: theme.colors.primary, borderColor: theme.colors.background }]}>
-                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>+</Text>
+            )}
+            ListEmptyComponent={listEmptyComponent}
+            refreshControl={
+              <RefreshControl
+                refreshing={Boolean(token) && searching}
+                onRefresh={() => { /* noop */ }}
+                tintColor={theme.colors.primary}
+                colors={[theme.colors.primary]}
+              />
+            }
+          />
+        </View>
+      ) : activeTab === 'requests' ? (
+        <FlatList
+          data={localRequests ?? []}
+          keyExtractor={(item: any) => item.id}
+          renderItem={({ item }: { item: any }) => (
+            <View style={{ paddingHorizontal: spacing.base }}>
+              <ContactListItem
+                title={item.from?.name || item.from?.email || 'Unknown'}
+                subtitle={item.from?.email}
+                avatarLabel={(item.from?.name || item.from?.email || 'U').slice(0, 2).toUpperCase()}
+                onPress={() => { /* noop */ }}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginBottom: spacing.sm }}>
+                <Button
+                  mode="contained"
+                  compact
+                  onPress={async () => {
+                    // optimistic remove
+                    setLocalRequests((prev) => (prev ? prev.filter((r) => r.id !== item.id) : prev));
+                    try {
+                      await friendRequestsHook.accept(item.id);
+                      // on accept, refetch friends list
+                      void refetch();
+                    } catch (err) {
+                      // revert on failure
+                      setLocalRequests((prev) => (prev ? [item, ...prev] : [item]));
+                    }
+                  }}
+                  style={{ backgroundColor: theme.colors.primary, borderRadius: borderRadius.sm }}
+                >
+                  Accept
+                </Button>
+
+                <Button
+                  mode="outlined"
+                  compact
+                  onPress={async () => {
+                    setLocalRequests((prev) => (prev ? prev.filter((r) => r.id !== item.id) : prev));
+                    try {
+                      await friendRequestsHook.reject(item.id);
+                    } catch (err) {
+                      setLocalRequests((prev) => (prev ? [item, ...prev] : [item]));
+                    }
+                  }}
+                  style={{ borderRadius: borderRadius.sm }}
+                >
+                  Reject
+                </Button>
               </View>
             </View>
-            <Text
-              variant="labelSmall"
-              style={{
-                color: theme.colors.onBackground,
-                marginTop: spacing.xs,
-                textAlign: 'center',
-              }}
-            >
-              Your story
-            </Text>
-          </Pressable>
-
-          {/* Sample friend stories (placeholder) */}
-          {friendList.slice(0, 5).map((friend, index) => (
-            <Pressable key={friend.id} style={styles.storyItem}>
-              <View
-                style={[
-                  styles.storyCircle,
-                  {
-                    borderColor: theme.colors.primary,
-                    borderWidth: 2,
-                  },
-                ]}
-              >
-                <Avatar.Text
-                  size={64}
-                  label={(friend.name || friend.email).slice(0, 2).toUpperCase()}
-                  style={{ backgroundColor: theme.colors.secondaryContainer }}
-                  labelStyle={{ color: theme.colors.onSecondaryContainer, fontSize: 24 }}
-                />
-              </View>
+          )}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyStateContainer}>
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+                No pending requests
+              </Text>
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      ) : (
+        // Friends tab
+        <>
+          {friendList.length > 0 && (
+            <View style={styles.sectionHeader}>
               <Text
-                variant="labelSmall"
-                numberOfLines={1}
+                variant="titleSmall"
                 style={{
                   color: theme.colors.onBackground,
-                  marginTop: spacing.xs,
-                  textAlign: 'center',
-                  maxWidth: 72,
+                  fontWeight: '700',
                 }}
               >
-                {(friend.name || friend.email).split(' ')[0]}
+                All Friends
               </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
+            </View>
+          )}
 
-      {/* Friends List Header */}
-      {friendList.length > 0 && (
-        <View style={styles.sectionHeader}>
-          <Text
-            variant="titleSmall"
-            style={{
-              color: theme.colors.onBackground,
-              fontWeight: '700',
-            }}
-          >
-            All Friends
-          </Text>
-        </View>
+          <FlatList
+            data={friendList}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }: { item: any }) => (
+              <ContactListItem
+                title={item.name || item.email}
+                subtitle={item.email}
+                avatarLabel={(item.name || item.email).slice(0, 2).toUpperCase()}
+                onPress={() => handleChatNow(item.id, item.name || item.email)}
+                isOnline={Boolean(item.isOnline)}
+              />
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={listEmptyComponent}
+            refreshControl={
+              <RefreshControl
+                refreshing={Boolean(token) && loading}
+                onRefresh={() => {
+                  if (token) {
+                    refetch();
+                  }
+                }}
+                tintColor={theme.colors.primary}
+                colors={[theme.colors.primary]}
+              />
+            }
+          />
+        </>
       )}
 
-      {/* Friends List */}
-      <FlatList
-        data={friendList}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={listEmptyComponent}
-        refreshControl={
-          <RefreshControl
-            refreshing={Boolean(token) && loading}
-            onRefresh={() => {
-              if (token) {
-                refetch();
-              }
-            }}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
-        }
+      {/* Floating Add Friend button */}
+      <FAB
+        icon="account-plus"
+        small={false}
+        onPress={() => setActiveTab('search')}
+        style={styles.fab}
+        accessibilityLabel="Add Friend"
       />
     </SafeAreaView>
   );
@@ -364,5 +459,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xxl * 2,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.base,
+    alignItems: 'center',
+  },
+  tabItem: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  tabItemActive: {
+    borderBottomWidth: 2,
+  },
+  requestsBadge: {
+    marginLeft: spacing.xs,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ef4444',
+    paddingHorizontal: spacing.xs,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.base,
+    bottom: 36,
+    backgroundColor: '#0ea5e9',
+    elevation: 6,
   },
 });

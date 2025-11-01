@@ -39,3 +39,30 @@ export async function addFriend(friendId: string): Promise<FriendProfile> {
 
   return response.friend;
 }
+
+export async function getFriendRequests(): Promise<any[]> {
+  const response = await apiRequest<{ requests: any[] }>({
+    url: '/friends/requests',
+    method: 'GET',
+  });
+
+  return response.requests ?? [];
+}
+
+export async function acceptFriendRequest(requestId: string): Promise<any> {
+  const response = await apiRequest<{ result: any }>({
+    url: `/friends/requests/${encodeURIComponent(requestId)}/accept`,
+    method: 'POST',
+  });
+
+  return response.result;
+}
+
+export async function rejectFriendRequest(requestId: string): Promise<any> {
+  const response = await apiRequest<{ result: any }>({
+    url: `/friends/requests/${encodeURIComponent(requestId)}/reject`,
+    method: 'POST',
+  });
+
+  return response.result;
+}

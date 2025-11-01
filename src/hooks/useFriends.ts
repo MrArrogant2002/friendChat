@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { addFriend, getFriends, searchFriends } from '@/lib/api/friends';
+import { acceptFriendRequest, addFriend, getFriendRequests, getFriends, rejectFriendRequest, searchFriends } from '@/lib/api/friends';
 import type { FriendProfile } from '@/lib/api/types';
 import { loadFriendsCache, saveFriendsCache } from '@/lib/storage/friendsCache';
 import { useApiMutation } from './useApiMutation';
@@ -20,6 +20,46 @@ export function useAddFriendMutation() {
   return useApiMutation<{ friendId: string }, FriendProfile>(async ({ friendId }) =>
     addFriend(friendId)
   );
+}
+
+export function useFriendRequests() {
+  const queryFn = useCallback(async () => {
+    return await getFriendRequests();
+  }, []);
+
+  const result = useApiQuery<any[]>(['friend-requests'], queryFn, {});
+
+  const acceptMutation = useApiMutation<{ requestId: string }, any>(async ({ requestId }) =>
+    acceptFriendRequest(requestId)
+  );
+
+  const rejectMutation = useApiMutation<{ requestId: string }, any>(async ({ requestId }) =>
+    rejectFriendRequest(requestId)
+  );
+
+  const accept = async (requestId: string) => {
+    // optimistic: immediately refetch after success; caller can optimistically remove from UI
+    const res = await acceptMutation.mutate({ requestId });
+    await result.refetch();
+    return res;
+  };
+
+  const reject = async (requestId: string) => {
+    const res = await rejectMutation.mutate({ requestId });
+    await result.refetch();
+    return res;
+  };
+
+  return {
+    data: result.data,
+    loading: result.loading,
+    error: result.error,
+    refetch: result.refetch,
+    accept,
+    reject,
+    accepting: acceptMutation.loading,
+    rejecting: rejectMutation.loading,
+  };
 }
 
 /**

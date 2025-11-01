@@ -10,6 +10,7 @@ interface ContactListItemProps {
   timestamp?: string;
   unreadCount?: number;
   avatarLabel?: string;
+  isOnline?: boolean;
   onPress?: (e?: GestureResponderEvent) => void;
   onLongPress?: (e?: GestureResponderEvent) => void;
 }
@@ -22,6 +23,7 @@ const ContactListItem: React.FC<ContactListItemProps> = ({
   avatarLabel,
   onPress,
   onLongPress,
+  isOnline,
 }) => {
   const theme = useTheme();
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -87,7 +89,10 @@ const ContactListItem: React.FC<ContactListItemProps> = ({
               labelStyle={{ color: '#FFFFFF', fontWeight: '700', fontSize: 22 }}
             />
             {/* Online status indicator - can be made dynamic */}
-            <View style={[styles.onlineIndicator, { borderColor: theme.colors.surface }]} />
+            {/* Online status indicator - shown only when user is online */}
+            {isOnline ? (
+              <View style={[styles.onlineIndicator, { borderColor: theme.colors.surface }]} />
+            ) : null}
           </View>
 
           <View style={styles.content}>

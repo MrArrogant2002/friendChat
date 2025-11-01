@@ -76,6 +76,8 @@ export type FriendProfile = {
   name: string;
   email: string;
   avatarUrl: string;
+  // Optional online presence flag (server may provide this)
+  isOnline?: boolean;
 };
 
 export type ApiListResponse<TItem, TKey extends string> = {
